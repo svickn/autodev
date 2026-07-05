@@ -16,8 +16,22 @@ set -euo pipefail
 ENGINE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CONFIG="${1:-}"
 
+# --all: re-render EVERY deployment (fleet upgrade in one command). Skips the example
+# and any config whose target repo is missing; keeps going past individual failures.
+if [[ "$CONFIG" == "--all" ]]; then
+  shopt -s nullglob; rc=0
+  for c in "$ENGINE_DIR"/config/*.json; do
+    [[ "$(basename "$c")" == deployment.example.json ]] && continue
+    r=$(jq -r '.repo.local_path // ""' "$c" 2>/dev/null)
+    if [[ -z "$r" || ! -d "$r" ]]; then echo "── skip $(basename "$c") (repo missing: ${r:-unset})"; continue; fi
+    echo "══ $(basename "$c") → $r"
+    AUTODEV_NONINTERACTIVE=1 bash "$ENGINE_DIR/install.sh" "$c" || { echo "✗ FAILED: $(basename "$c")"; rc=1; }
+  done
+  exit $rc
+fi
+
 if [[ -z "$CONFIG" || ! -f "$CONFIG" ]]; then
-  echo "usage: ./install.sh config/<client>.json" >&2
+  echo "usage: ./install.sh config/<client>.json   |   ./install.sh --all" >&2
   exit 1
 fi
 command -v jq >/dev/null || { echo "error: jq is required (brew install jq)" >&2; exit 1; }
@@ -153,7 +167,12 @@ cp "$TMP/scripts/"* "$REPO/scripts/autodev/"
 chmod +x "$REPO/scripts/autodev/"*.sh "$REPO/scripts/autodev/"*.mjs 2>/dev/null || true
 mkdir -p "$REPO/.autodev/ops"
 cp -R "$TMP/ops/." "$REPO/.autodev/ops/"
-cp "$CONFIG" "$REPO/.autodev/deployment.json"
+# Stamp the engine version/sha into the installed config so doctor can detect stale
+# installs (a deployment silently running a weeks-old engine was invisible before).
+ENGINE_VERSION=$(cat "$ENGINE_DIR/VERSION" 2>/dev/null || echo "unknown")
+ENGINE_SHA=$(git -C "$ENGINE_DIR" rev-parse --short HEAD 2>/dev/null || echo "unknown")
+jq --arg v "$ENGINE_VERSION" --arg s "$ENGINE_SHA" --arg d "$ENGINE_DIR" --arg t "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+  '.engine = {version: $v, sha: $s, engine_dir: $d, installed_at: $t}' "$CONFIG" > "$REPO/.autodev/deployment.json"
 
 # Install the pre-push guard the docs promise: blocks ENGINE pushes per the Delivery mode
 # (local_diff = all; draft_pr = default branch), never a human terminal (CLAUDECODE gate).

@@ -1,0 +1,38 @@
+name: engine-ci
+on:
+  push: { branches: ["**"] }
+  pull_request:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Shell syntax (bash -n)
+        run: |
+          set -e
+          find . -name "*.sh" -not -path "./.git/*" -print0 | xargs -0 -n1 bash -n
+          echo "all shell scripts parse"
+
+      - name: shellcheck (warnings allowed, errors fail)
+        run: |
+          sudo apt-get install -y shellcheck >/dev/null
+          find . -name "*.sh" -not -path "./.git/*" -print0 | xargs -0 shellcheck -S error
+
+      - name: Node syntax (node --check)
+        run: |
+          set -e
+          find . -name "*.mjs" -not -path "./.git/*" -print0 | xargs -0 -n1 node --check
+          echo "all mjs parse"
+
+      - name: JSON validity (configs + settings template)
+        run: |
+          set -e
+          jq -e . config/deployment.example.json >/dev/null
+          # settings.json contains {{PLACEHOLDERS}} inside strings — still valid JSON
+          jq -e . template/.claude/settings.json >/dev/null
+          echo "JSON valid"
+
+      - name: Smoke test (install into synthetic client repo)
+        run: bash tests/smoke.sh
