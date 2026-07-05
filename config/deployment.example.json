@@ -64,9 +64,7 @@
       "ready_for_human_review":    { "name": "Human Review (H)", "id": "FILL_AT_SETUP", "human": true, "_role": "Gate 2 — draft PR + manual script, awaiting approve" },
       "ready_for_human_acceptance":{ "name": "Human Review (H)", "id": "FILL_AT_SETUP", "human": true, "_role": "per_feature: whole-feature acceptance (same column)" },
       "blocked":                   { "name": "Blocked (H)",      "id": "FILL_AT_SETUP", "human": true, "_role": "stuck mid-pipeline; needs human input" },
-      "done":                      { "name": "Done",             "id": "FILL_AT_SETUP", "_role": "merged / shipped" },
-      "failed_human_qa":           { "name": "AI Development",   "id": "FILL_AT_SETUP", "_role": "rejected → back to dev (same column)" },
-      "approved_merge":            { "name": "Done",             "id": "FILL_AT_SETUP", "_role": "approved → engine merges → Done (same column)" }
+      "done":                      { "name": "Done",             "id": "FILL_AT_SETUP", "_role": "merged / shipped" }
     },
     "labels": {
       "ai_eligible": "ai-eligible",
@@ -125,10 +123,18 @@
   },
 
   "qa": {
-    "live_browser": "advisory",
     "e2e_framework": "cypress",
     "e2e_dir": "e2e",
     "live_browser_driver": "playwright_mcp",
+    "_live_note": "The live-browser check is ALWAYS advisory (never a gate) — that's fixed engine behavior, not a toggle. Visual-QA strictness is the one knob: qa.visual_qa.mode.",
+    "test_layers": {
+      "backend": "",
+      "ui": "",
+      "e2e": "",
+      "_note": "The EXACT commands QA runs per layer (leave \"\" to fall back to commands.test). Put required exclusions/concurrency INLINE here (e.g. 'mix test --exclude=buggy --max-cases 8') — QA runs these strings verbatim and never substitutes the framework's bare test command, so known-baseline/contention failures don't produce false reds."
+    },
+    "_known_baseline": "",
+    "_known_baseline_note": "Document pre-existing failures here (e.g. '3 UI suites fail to compile on a jest-dom types gap — pre-existing'). QA judges each layer against this baseline instead of zero, so inherited breakage doesn't false-red new work.",
     "visual_qa": {
       "enabled": true,
       "mode": "advisory",
@@ -163,6 +169,8 @@
   },
 
   "review": {
+    "delivery": "draft_pr",
+    "_delivery_note": "HOW work reaches a human (see autodev.md ▸ Delivery mode — authoritative). draft_pr (default) = the bot pushes feature/story branches + opens GitHub draft PRs; humans merge via GitHub. local_diff = LOCAL-ONLY: no git push, no PRs — branches/merges stay local and gates review a local diff posted on the ticket (enforced by the installed .git/hooks/pre-push).",
     "granularity": "per_story",
     "_granularity_note": "per_story = human reviews each story (calibration). per_feature = stories auto-merge to the feature branch on AI-QA pass; the human acceptance-tests the WHOLE feature and signs off → main (the PM/dev-team model). Start per_story for the first feature, then flip to per_feature.",
     "auto_merge_to_feature_branch": false,

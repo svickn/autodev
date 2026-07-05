@@ -55,6 +55,7 @@ DEFAULT_BRANCH=$(get '.repo.default_branch')
 FEATURE_PREFIX=$(get '.repo.feature_branch_prefix')
 STORY_PREFIX=$(get '.repo.story_branch_prefix')
 ASSISTANT_NAME=$(get '.assistant_name // "Marj"')
+BACKUP_REMOTE=$(get '.backup.remote // "origin"')
 BOT_NAME=$(get '.bot_identity.name')
 BOT_EMAIL=$(get '.bot_identity.email')
 BG_PROJECT=$(get '.braingrid.project_short_id')
@@ -103,15 +104,12 @@ substitute() {
       -e "s|{{DEFAULT_BRANCH}}|$DEFAULT_BRANCH|g" \
       -e "s|{{FEATURE_PREFIX}}|$FEATURE_PREFIX|g" \
       -e "s|{{STORY_PREFIX}}|$STORY_PREFIX|g" \
-      -e "s|{{BOT_NAME}}|$BOT_NAME|g" \
-      -e "s|{{BOT_EMAIL}}|$BOT_EMAIL|g" \
+      -e "s|{{BACKUP_REMOTE}}|$BACKUP_REMOTE|g" \
       -e "s|{{BG_PROJECT}}|$BG_PROJECT|g" \
       -e "s|{{LINEAR_TEAM}}|$LINEAR_TEAM|g" \
-      -e "s|{{LINEAR_TEAM_KEY}}|$LINEAR_TEAM_KEY|g" \
       -e "s|{{MAX_LANES}}|$MAX_LANES|g" \
       -e "s|{{TICK_MIN}}|$TICK_MIN|g" \
       -e "s|{{TICK_SECONDS}}|$TICK_SECONDS|g" \
-      -e "s|{{MAX_LOOPS}}|$MAX_LOOPS|g" \
       -e "s|{{SELF_REVIEW}}|$SELF_REVIEW|g" \
       -e "s|{{CMD_INSTALL}}|$CMD_INSTALL|g" \
       -e "s|{{CMD_TEST}}|$CMD_TEST|g" \
@@ -156,6 +154,19 @@ chmod +x "$REPO/scripts/autodev/"*.sh "$REPO/scripts/autodev/"*.mjs 2>/dev/null 
 mkdir -p "$REPO/.autodev/ops"
 cp -R "$TMP/ops/." "$REPO/.autodev/ops/"
 cp "$CONFIG" "$REPO/.autodev/deployment.json"
+
+# Install the pre-push guard the docs promise: blocks ENGINE pushes per the Delivery mode
+# (local_diff = all; draft_pr = default branch), never a human terminal (CLAUDECODE gate).
+# A pre-existing team hook is backed up and CHAINED (still runs first), not clobbered.
+if [[ -d "$REPO/.git" ]]; then
+  HOOKS="$REPO/.git/hooks"; mkdir -p "$HOOKS"
+  if [[ -f "$HOOKS/pre-push" ]] && ! grep -q "autoDev pre-push" "$HOOKS/pre-push"; then
+    mv "$HOOKS/pre-push" "$HOOKS/pre-push.pre-autodev"
+    echo "⚠︎ existing pre-push hook moved to pre-push.pre-autodev — autoDev's guard chains it (yours still runs first)"
+  fi
+  cp "$TMP/ops/pre-push.sh" "$HOOKS/pre-push" && chmod +x "$HOOKS/pre-push"
+  echo "✓ installed .git/hooks/pre-push (delivery-mode guard — engine only, humans unaffected)"
+fi
 
 # Report any team-authored convention files we deliberately left untouched.
 for f in AGENTS.md CLAUDE.md .claude/CLAUDE.md; do

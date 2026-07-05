@@ -17,6 +17,7 @@
       "Bash(git worktree:*)", "Bash(git diff:*)", "Bash(git log:*)",
       "Bash(git push origin {{FEATURE_PREFIX}}*)",
       "Bash(git push origin {{STORY_PREFIX}}/*)",
+      "Bash(git push {{BACKUP_REMOTE}} {{FEATURE_PREFIX}}*)",
       "Bash(git rebase:*)", "Bash(git merge --squash:*)",
       "Bash({{CMD_INSTALL}})", "Bash({{CMD_TEST}})", "Bash({{CMD_LINT}})",
       "Bash({{CMD_BUILD}})", "Bash({{CMD_APP_RUN}})",
@@ -28,6 +29,7 @@
     ],
     "deny": [
       "Bash(git push origin {{DEFAULT_BRANCH}}:*)",
+      "Bash(git push {{BACKUP_REMOTE}} {{DEFAULT_BRANCH}}:*)",
       "Bash(git push --force:*)",
       "Bash(gh pr merge * --auto:*)",
       "Edit(AGENTS.md)", "Edit(**/AGENTS.md)",

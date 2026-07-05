@@ -21,7 +21,7 @@ New work enters here and nowhere else. The default input stack is **BrainGrid**
   engine builds passed through a human in-session.
 
 - **`linear`** — intake is **driven entirely from Linear**. The operator creates
-  an issue in the drop zone (`intake.linear_drop_status`, default `Backlog`); the
+  an issue in the drop zone (`intake.linear_drop_status`, default `New Request`); the
   heartbeat picks it up and runs every step below **as Linear comments** — it asks
   clarifying questions in comments, the operator answers in comments, and each
   human gate passes when the operator comments **`approve`**. No terminal needed.

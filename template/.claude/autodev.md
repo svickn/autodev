@@ -147,7 +147,7 @@ the pre-push hook (code stays fully local by design).
 4. **Ask, don't invent — at any stage.** If info is missing, ambiguous, or
    contradictory, ask rather than guess. Front half (intake → PRD → breakdown):
    ask the human **live, in-session**. Back half (dev / self-review / QA): move
-   the story to **Blocked – Needs Human Input** with the specific question and
+   the story to **Blocked (H)** with the specific question and
    carry on with other work. Never pick an interpretation and ship it.
 5. **One feature at a time; parallel epic lanes inside it.** ≤{{MAX_LANES}}
    lanes, one worker per epic, sequential within a lane.
