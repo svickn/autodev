@@ -16,6 +16,62 @@ set -euo pipefail
 ENGINE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CONFIG="${1:-}"
 
+# --init: guided config generator. Detects what it can from the target repo (branch,
+# package manager, commands), asks only what it can't, defaults tracker.kind=local so a
+# new deployment needs ZERO Linear setup. Writes config/<slug>.json, offers to install.
+if [[ "$CONFIG" == "--init" ]]; then
+  command -v jq >/dev/null || { echo "error: jq is required (brew install jq)" >&2; exit 1; }
+  # works with a TTY or piped answers; on EOF every ask() falls back to its default
+  ask() { local q="$1" d="$2" a; printf '%s [%s] > ' "$q" "$d" >&2; read -r a || true; echo "${a:-$d}"; }
+
+  T_REPO=$(ask "Path to the project repo autoDev should drive" "$PWD")
+  T_REPO="${T_REPO/#\~/$HOME}"
+  [[ -d "$T_REPO/.git" ]] || { echo "error: $T_REPO is not a git repo" >&2; exit 1; }
+  T_NAME=$(ask "Deployment name" "$(basename "$T_REPO")")
+  SLUG=$(echo "$T_NAME" | tr '[:upper:]' '[:lower:]' | sed -e 's/[^a-z0-9]/-/g' -e 's/--*/-/g' -e 's/^-//' -e 's/-$//')
+
+  # detect: default branch + package-manager commands (all detection is best-effort —
+  # never let a failed probe kill the wizard under set -e)
+  T_BRANCH=$( (git -C "$T_REPO" symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null || true) | sed 's|origin/||')
+  [[ -n "$T_BRANCH" ]] || T_BRANCH=$(git -C "$T_REPO" symbolic-ref --short HEAD 2>/dev/null || echo main)
+  T_BRANCH=$(ask "Default branch" "$T_BRANCH")
+  PM=""
+  if   [[ -f "$T_REPO/bun.lockb" || -f "$T_REPO/bun.lock" ]]; then PM=bun
+  elif [[ -f "$T_REPO/pnpm-lock.yaml" ]]; then PM=pnpm
+  elif [[ -f "$T_REPO/yarn.lock" ]]; then PM=yarn
+  elif [[ -f "$T_REPO/package.json" ]]; then PM=npm; fi
+  C_INSTALL=""; C_TEST=""; C_LINT=""; C_BUILD=""; C_RUN=""
+  if [[ -n "$PM" ]]; then
+    C_INSTALL="$PM install"
+    has_script() { jq -e --arg s "$1" '.scripts[$s]' "$T_REPO/package.json" >/dev/null 2>&1; }
+    has_script test  && C_TEST="$PM run test"
+    has_script lint  && C_LINT="$PM run lint"
+    has_script build && C_BUILD="$PM run build"
+    for s in dev start serve; do has_script "$s" && { C_RUN="$PM run $s"; break; }; done
+    echo "detected ($PM): install='$C_INSTALL' test='$C_TEST' lint='$C_LINT' build='$C_BUILD' run='$C_RUN'" >&2
+  else
+    echo "no package.json — fill commands.* in the config before running." >&2
+  fi
+  C_TEST=$(ask "Test command" "${C_TEST:-FILL_ME}")
+  TRACKER=$(ask "Tracker: local (git-native board, zero setup) or linear" "local")
+  A_NAME=$(ask "Assistant name" "Marj")
+
+  OUT="$ENGINE_DIR/config/$SLUG.json"
+  [[ -f "$OUT" ]] && { echo "error: $OUT already exists — edit it or pick another name" >&2; exit 1; }
+  jq --arg n "$T_NAME" --arg an "$A_NAME" --arg r "$T_REPO" --arg b "$T_BRANCH" --arg k "$TRACKER" \
+     --arg ci "${C_INSTALL:-FILL_ME}" --arg ct "$C_TEST" --arg cl "${C_LINT:-FILL_ME}" \
+     --arg cb "${C_BUILD:-FILL_ME}" --arg cr "${C_RUN:-FILL_ME}" \
+     '.client_name=$n | .assistant_name=$an | .repo.local_path=$r | .repo.default_branch=$b
+      | .tracker.kind=$k | .commands.install=$ci | .commands.test=$ct | .commands.lint=$cl
+      | .commands.build=$cb | .commands.app_run=$cr' \
+     "$ENGINE_DIR/config/deployment.example.json" > "$OUT"
+  echo "✓ wrote $OUT (tracker.kind=$TRACKER$([ "$TRACKER" = local ] && echo ' — no Linear setup needed'))"
+  YN=$(ask "Install into $T_REPO now? (y/n)" "n")
+  [[ "$YN" == y* ]] && exec bash "$ENGINE_DIR/install.sh" "$OUT"
+  echo "when ready: ./install.sh config/$SLUG.json"
+  exit 0
+fi
+
 # --all: re-render EVERY deployment (fleet upgrade in one command). Skips the example
 # and any config whose target repo is missing; keeps going past individual failures.
 if [[ "$CONFIG" == "--all" ]]; then

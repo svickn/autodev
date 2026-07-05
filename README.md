@@ -49,8 +49,13 @@ autoDev/
 ## Deploy to a new client (rinse and repeat)
 
 ```bash
-cp config/deployment.example.json config/<client>.json   # fill: repo, branch, Linear, commands…
-./install.sh config/<client>.json                        # renders the engine + auto-creates the board
+./install.sh --init            # guided: detects branch/commands from the repo, asks ~5
+                               # questions, defaults to the zero-setup LOCAL board,
+                               # writes config/<name>.json, offers to install
+# (manual alternative:)
+cp config/deployment.example.json config/<client>.json   # fill: repo, branch, commands…
+./install.sh config/<client>.json                        # renders the engine (+ board setup per tracker.kind)
+./install.sh --all                                       # re-render EVERY deployment (fleet upgrade)
 # (if client_name is still unset/placeholder, install prompts for it and saves it back;
 #  set AUTODEV_NONINTERACTIVE=1 to skip the prompt in CI/managed installs)
 scripts/autodev/doctor.sh                                 # preflight — fix any ✗ before running
