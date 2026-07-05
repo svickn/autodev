@@ -60,8 +60,19 @@ assembled branch:
 Then generate a **human-readable acceptance report** (post on the feature issue /
 Project): stories shipped + QA verdicts · the **integrated-suite** result · the
 **live-system** screenshots · CI status · anything flagged-not-blocked · the manual
-test script. Then **`move <feature> ready_for_human_acceptance --note "🚦 Feature
-acceptance — integrated suites ✓ · live smoke ✓ · report posted; awaiting human
+test script.
+
+**Preview environment (if `preview.enabled`) — the human accepts a RUNNING PRODUCT,
+not a diff.** Start the assembled feature-branch app (`preview.command`, default
+`{{CMD_APP_RUN}}`; **hermetic env applied** — a preview must never touch prod
+services) and include in the acceptance comment: the **URL** (`preview.url`, default
+`{{APP_URL}}`) and the **exact relaunch one-liner** (`git checkout
+{{FEATURE_PREFIX}}<slug> && <command>` → URL). Ticks are stateless, so the engine's
+instance may not outlive the session — the posted command is the durable path; the
+running instance is a courtesy. 🗒️ `🖥️ preview up · <url> · relaunch: <cmd>`.
+
+Then **`move <feature> ready_for_human_acceptance --note "🚦 Feature acceptance —
+integrated suites ✓ · live smoke ✓ · report + preview posted; awaiting human
 sign-off"`** (project mode: the equivalent `acceptance` project-status move).
 **Stop — human decision.**
 

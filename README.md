@@ -96,7 +96,12 @@ The engine is **client-agnostic**; everything per-client lives in the one config
 - **Hermetic always (safety)** — every test/build/app/live run applies
   `qa.hermetic` overrides; the engine **never** drives QA or the live app against
   production services/creds, and `doctor` fails on prod endpoints in `.env`.
-- **Feature-vs-bug gate** at intake — bugs are flagged for triage, not built (v1).
+- **Feature-vs-bug gate** at intake — `intake.bugs`: `triage` (default — flagged for a
+  human, not built) or `pipeline` (**repro-test-first**: intake demands a reproduction,
+  the dev agent commits a failing repro test before fixing, QA verifies red → green).
+- **Preview at acceptance** (`preview.enabled`) — the human signs off on a **running
+  product** (assembled feature branch launched hermetically + relaunch one-liner posted
+  on the ticket), not just a diff and a report.
 - **Glass-box observability** — status moves + per-tick comment logging + an
   operator digest + a per-feature stats record (`.autodev/metrics.jsonl`).
 - **Stateless heartbeat** passes · rate-limit auto-pause/resume · dead-man watchdog
@@ -110,6 +115,8 @@ The engine is **client-agnostic**; everything per-client lives in the one config
 | `tracker.mirror.linear` | local mode: also mirror to Linear async (queued + coalesced, off the critical path) | `false` |
 | `braingrid.enabled` | BrainGrid spec authoring **or** agent (PM + PjM) fallback | `true` |
 | `intake.mode` | `cli` (in-session) **or** `linear` (ticket + comments, no terminal) | `cli` |
+| `intake.bugs` | `triage` (flag for a human) **or** `pipeline` (repro-test-first bug fixing) | `triage` |
+| `preview.enabled` | launch the assembled feature at the acceptance gate + post URL/relaunch cmd | `true` |
 | `tracker.hierarchy` | `issue` (feature on the board) **or** `project` (feature-as-Project, org-wide statuses) | `issue` |
 | `review.granularity` | `per_story` (review each) **or** `per_feature` (auto-merge to branch; review the whole) | `per_story` |
 | `review.delivery` | `draft_pr` (push + GitHub PRs) **or** `local_diff` (no GitHub — local branches + diffs only) | `draft_pr` |

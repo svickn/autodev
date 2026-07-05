@@ -57,18 +57,26 @@ The steps below are identical in both modes — only the *medium* differs
      present in the code but produces the wrong output, it is a bug.
    - **`route:task`** — mechanical chore (rename, dep bump, config).
 
-   **If it's a bug (or a task) → STOP. Do not draft a brief or PRD.** Tell the
-   operator plainly: *"This looks like a **bug**, not a feature — `<one-line
-   why>`. The engine currently runs the **feature** pipeline only; bugs need
-   reproduction + root-cause, which isn't wired yet, so I've flagged it for human
-   triage rather than guess."* Create the Linear issue with `route:bug`, leave it
-   **without** `ai-eligible` (the devloop will ignore it), and park it in a human
-   state. **Offer an override:** if the operator is sure it's a genuinely new
-   capability, they can confirm and we proceed as a feature.
+   **If it's a bug, read `intake.bugs`:**
+   - **`triage` (default):** STOP — do not draft a brief or PRD. Tell the operator:
+     *"This looks like a **bug**, not a feature — `<one-line why>`. Bug handling is set
+     to triage here, so I've flagged it for a human rather than guess."* Create the
+     issue with `route:bug`, **without** `ai-eligible` (the devloop ignores it), parked
+     in a human state. **Offer an override** if the operator insists it's genuinely new
+     capability (proceed as a feature), or suggest flipping `intake.bugs: pipeline`.
+   - **`pipeline`:** run the **repro-first bug pipeline**. Interview for a complete
+     reproduction instead of a brief: **steps to reproduce · expected vs actual ·
+     environment/data · when it last worked** (regression?). No reproducible
+     description → stay in triage (ask, don't invent). Create the story with
+     `route:bug` + `ai-eligible` + `repro-first` and the full repro in the description
+     — it flows the normal board, and the devloop enforces **failing-repro-test-first**
+     (§3): the fix is only believed because a test that reproduced the bug went red →
+     green. Bugs skip the PRD/breakdown front half — a repro IS the spec.
+   **Tasks (`route:task`)** stay human-triaged either way.
 
-   > Why this gate exists: a bug routed through the feature pipeline produces a
-   > confident, well-tested change to the wrong problem — or a no-op that *looks*
-   > like progress. Catching it at the door is far cheaper than catching it at QA.
+   > Why this gate exists: a bug pushed blind through the feature pipeline produces a
+   > confident, well-tested change to the wrong problem. Either mode catches that at
+   > the door — triage by a human, pipeline by demanding the reproduction first.
 
 2. **Interview for a complete brief — ask, don't invent.** A good brief needs:
    - **Problem** — what's wrong / missing, and for whom.

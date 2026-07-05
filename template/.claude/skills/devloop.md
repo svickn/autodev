@@ -95,6 +95,12 @@ any in-flight story. None eligible anywhere → exit (Blocked cards are visible)
   requirements gap → §4 (ask / Blocked), not a coin-flip.
 - **Each diff must include tests** covering the acceptance criteria (`{{CMD_TEST}}`).
   A diff without tests fails self-check.
+- **Bug stories (`route:bug` + `repro-first` — `intake.bugs: pipeline`) are
+  REPRO-TEST-FIRST:** before any fix, write a test from the ticket's reproduction and
+  **commit it failing** — 🗒️ `🔴 repro test written · fails as described`. If the repro
+  can't be made to fail, the bug isn't reproduced → `move <issue> blocked --note "🛑
+  can't reproduce — <what was tried>; need: <specifics>"`. Then fix until green (🗒️
+  `🟢 repro test passes`). QA treats a missing/never-red repro test as a gating fail.
 
 ## 4 · Self-review (×`self_review_rounds`, default 1)
 Re-read the diff against each acceptance criterion; fix gaps. **A requirements gap**
