@@ -11,7 +11,7 @@
 //
 // Usage: node report.mjs [--force]    (--force ignores the cadence window)
 
-import { readFileSync, appendFileSync, mkdirSync, statSync, writeFileSync } from 'node:fs';
+import { readFileSync, appendFileSync, mkdirSync, statSync, writeFileSync, readdirSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { execSync } from 'node:child_process';
@@ -62,19 +62,31 @@ async function gql(q, v = {}) {
   return (await r.json()).data;
 }
 
-// --- gather snapshot ---
+// --- gather snapshot (kind-aware: local board files, or live Linear) ---
 const buckets = { inflight: 0, awaiting_human: 0, done: 0, blocked: 0, queued: 0 };
-let nodes = [];
-if (token && cfg.tracker?.team_id) {
+const bucketOf = (name, completed) => {
+  if (/Blocked/i.test(name)) return 'blocked';
+  if (name.includes('(H)')) return 'awaiting_human';
+  if (/AI Development|AI QA/i.test(name)) return 'inflight';
+  if (completed) return 'done';
+  if (/Ready for AI Dev/i.test(name)) return 'queued';
+  return null;
+};
+if ((cfg.tracker?.kind || 'linear') === 'local') {
+  const boardDir = join(dirname(dirname(CONFIG_PATH)), '.autodev', 'board');
+  try {
+    for (const f of readdirSync(boardDir).filter((x) => x.endsWith('.json') && !x.startsWith('_'))) {
+      const i = JSON.parse(readFileSync(join(boardDir, f), 'utf8'));
+      const s = cfg.tracker?.statuses?.[i.stage] || {};
+      const b = bucketOf(s.name || i.stage, i.stage === 'done');
+      if (b) buckets[b]++;
+    }
+  } catch { /* no board yet — zeros */ }
+} else if (token && cfg.tracker?.team_id) {
   const d = await gql('query($t:String!){team(id:$t){issues(first:250){nodes{state{name type}}}}}', { t: cfg.tracker.team_id });
-  nodes = d?.team?.issues?.nodes || [];
-  for (const n of nodes) {
-    const name = n.state?.name || '';
-    if (/Blocked/i.test(name)) buckets.blocked++;
-    else if (name.includes('(H)')) buckets.awaiting_human++;
-    else if (/AI Development|AI QA/i.test(name)) buckets.inflight++;
-    else if (n.state?.type === 'completed') buckets.done++;
-    else if (/Ready for AI Dev/i.test(name)) buckets.queued++;
+  for (const n of d?.team?.issues?.nodes || []) {
+    const b = bucketOf(n.state?.name || '', n.state?.type === 'completed');
+    if (b) buckets[b]++;
   }
 }
 

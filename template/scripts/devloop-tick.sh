@@ -42,3 +42,8 @@ fi
 # --- operator digest (B4): cheap, self-gates on reporting.cadence; no-op if off/not-due ---
 AUTODEV_CONFIG="$REPO/.autodev/deployment.json" RUN_HOME="$RUN_HOME" \
   node "$(dirname "$0")/report.mjs" >/dev/null 2>>"$RUN_HOME/logs/err.log" || true
+
+# --- Linear mirror flush: async, off the critical path; self-gates (no-op unless
+# tracker.kind=local + tracker.mirror.linear). Failures defer to the next tick. ---
+AUTODEV_CONFIG="$REPO/.autodev/deployment.json" \
+  node "$(dirname "$0")/tracker.mjs" flush-mirror >/dev/null 2>>"$RUN_HOME/logs/err.log" || true

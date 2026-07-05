@@ -41,7 +41,7 @@ Read `.autodev/deployment.json` for: tracker states/labels, BrainGrid project,
      `braingrid task show <id> --format markdown` → the full task spec (description,
      acceptance criteria, implementation/build plan, test plan, edge cases).
      **Write that entire markdown into the issue body**, e.g.
-     `node scripts/autodev/linear.mjs create-issue --title "<task>"
+     `node scripts/autodev/tracker.mjs create-issue --title "<task>"
      --desc "<full task markdown>" --stage ready_for_ai_dev --labels "ai-eligible,…"`,
      assigned to its epic's Milestone. Don't summarize or link-only — copy the data in.
    - **(Fallback)** project-manager-senior writes the same complete spec (criteria,
@@ -51,7 +51,7 @@ Read `.autodev/deployment.json` for: tracker states/labels, BrainGrid project,
      - **Acceptance criteria** (objective, testable — the contract) · **AI QA steps**
        + **manual test steps** · **Tests required** note.
      - **`blocked by` links** for dependencies — set them explicitly with
-       `node scripts/autodev/linear.mjs relate <blocker> <story> --type blocks`
+       `node scripts/autodev/tracker.mjs relate <blocker> <story> --type blocks`
        (don't rely on creation order).
      - **Touched files** — feeds the lane file-overlap guard + persona routing.
      - **`risk:` class** — `trivial` / `standard` / `sensitive` (isolated+well-tested

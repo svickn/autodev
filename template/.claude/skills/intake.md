@@ -88,7 +88,7 @@ The steps below are identical in both modes — only the *medium* differs
    - **Wireframes/designs (C1):** if the request includes mockups/wireframes,
      **preserve them visually** — save the image files under
      `specs/<feature-slug>/design/` and **attach them to the feature ticket** with
-     `node scripts/autodev/linear.mjs attach <issue> <url> --title "<name>"` (a
+     `node scripts/autodev/tracker.mjs attach <issue> <url> --title "<name>"` (a
      Figma/hosted URL; for local images, host or link them). Never reduce a design
      to a text summary; downstream dev + manual QA (C2) need the actual visuals.
 
@@ -99,7 +99,7 @@ The steps below are identical in both modes — only the *medium* differs
      Clarifying (H) → PRD Review (H)); at `/breakdown` a Project + Milestones are
      added to group its stories.
    - **`project` (opt-in):** create a **Linear Project** (the feature) and set its
-     project-status to `new_request` (`linear.mjs set-project-status`). The gates
+     project-status to `new_request` (`tracker.mjs set-project-status`). The gates
      ride project statuses; stories are created at `/breakdown`.
 
 5. **Hand off.** Tell the operator the brief is captured and offer to draft the

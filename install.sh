@@ -208,9 +208,18 @@ fi
 
 rm -rf "$TMP"
 
+# ---- board setup per tracker.kind --------------------------------------------
+TRACKER_KIND=$(get '.tracker.kind // "linear"')
+if [[ "$TRACKER_KIND" == "local" ]]; then
+  mkdir -p "$REPO/.autodev/board"
+  echo "✓ local board ready (.autodev/board/ — no Linear setup needed; view: node scripts/autodev/tracker.mjs board)"
+fi
+
 # ---- create the standard Linear board (canonical columns; idempotent) -------
 TOKEN_FILE="$HOME/.config/autodev/$CLIENT.linear.token"
-if [[ -n "$LINEAR_TEAM_ID" && -f "$TOKEN_FILE" ]]; then
+if [[ "$TRACKER_KIND" == "local" && "$(get '.tracker.mirror.linear // false')" != "true" ]]; then
+  : # pure local mode — no Linear board to create
+elif [[ -n "$LINEAR_TEAM_ID" && -f "$TOKEN_FILE" ]]; then
   echo "Creating the standard Linear board columns in team '$LINEAR_TEAM'…"
   TOKEN="$(cat "$TOKEN_FILE")"; API="https://api.linear.app/graphql"
   EXISTING=$(curl -s -X POST "$API" -H "Content-Type: application/json" -H "Authorization: $TOKEN" \

@@ -27,6 +27,11 @@
 
   "tracker": {
     "kind": "linear",
+    "_kind_note": "WHERE the board (the only state machine) lives. All ops go through scripts/autodev/tracker.mjs in both modes. 'local' = git-native board (.autodev/board/*.json): zero setup, no token, no rate limits, offline; view with 'tracker.mjs board' (text + board.html). 'linear' = the board IS Linear (live API; required for intake.mode=linear). New deployments should start 'local' and add Linear later if wanted.",
+    "mirror": {
+      "linear": false,
+      "_note": "local kind only: true = ALSO mirror to Linear asynchronously (best-effort dashboard). Ops queue to .autodev/board/.mirror-queue.jsonl; drain with 'tracker.mjs flush-mirror' (e.g. at the end of each tick). Local stays the source of truth — Linear rate limits never block the pipeline."
+    },
     "mcp": "mcp__linear",
     "_note": "Use the CLIENT's OWN Linear workspace/team (connected via their auth). Never a different workspace.",
     "team": "AcmeCo Engineering",

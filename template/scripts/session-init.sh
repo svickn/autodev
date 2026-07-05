@@ -26,7 +26,7 @@ name. Two scopes, and they do not overlap:
   has them. **Read and OBEY them; on conventions their files win — and NEVER edit, overwrite,
   or "update" them.** Propose any convention change in a separate PR with rationale.
 
-Unsure of state? `node scripts/autodev/linear.mjs doctor`, then read the board. The full
+Unsure of state? `node scripts/autodev/tracker.mjs doctor`, then read the board. The full
 manual and the auto-detected conventions follow; also read any AGENTS.md / CLAUDE.md present.
 EOF
 

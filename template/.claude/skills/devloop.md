@@ -19,7 +19,7 @@ Read `.autodev/deployment.json` for: tracker states/labels, `execution.*`
 > (`scripts/autodev/devloop-tick.sh`). This skill is the work of one pass.
 
 > **Every stage transition below is a REAL board move** — make it with the helper:
-> `node scripts/autodev/linear.mjs move <issue> <stage_key>` (keys: `ai_development`,
+> `node scripts/autodev/tracker.mjs move <issue> <stage_key>` (keys: `ai_development`,
 > `ai_qa`, `ready_for_human_review`, `blocked`, `done`, …). Moving the card at each
 > step is what makes the board a live dashboard for non-technical operators — never
 > jump a card straight from `ai_development` to `done`.
@@ -42,9 +42,9 @@ Read `.autodev/deployment.json` for: tracker states/labels, `execution.*`
 >   (a few lines each — a *summary*, never keystrokes).
 > - **`verbose`** — also attach diffs / sub-steps for debugging.
 >
-> Make a move and its reason **one call**: `linear.mjs move <issue> <stage> --note
+> Make a move and its reason **one call**: `tracker.mjs move <issue> <stage> --note
 > "<why>"` (never a bare `move` for a pipeline transition). Free-standing notes use
-> `linear.mjs comment <issue> "…"`. The 🗒️ markers below are the *minimum* set —
+> `tracker.mjs comment <issue> "…"`. The 🗒️ markers below are the *minimum* set —
 > if the engine does something not listed, log that too.
 
 ## 0 · Front half — Linear-driven intake (only if `intake.mode` is `linear`/`both`)
@@ -321,7 +321,7 @@ When all of the epic's stories are merged into the feature branch and it's green
   the shipped feature. Compute: name · started→shipped dates · elapsed wall time ·
   #epics/#stories · lines `git diff --shortstat {{DEFAULT_BRANCH}}...{{FEATURE_PREFIX}}<slug>`
   · dev↔QA loop rounds · QA verdicts (what was caught). Write it **two ways**:
-  (1) a human summary **comment on the feature** (`linear.mjs comment`), and
+  (1) a human summary **comment on the feature** (`tracker.mjs comment`), and
   (2) append one JSON object to **`.autodev/metrics.jsonl`** (the portfolio rollup).
 - Release the one-feature lock → next queued epic.
 

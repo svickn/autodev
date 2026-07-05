@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # autoDev — surface engine state to the team via a Linear issue.
-# Uses the linear.mjs helper (robust: retry/backoff, reads .autodev/deployment.json).
+# Uses the tracker.mjs helper (robust: retry/backoff, reads .autodev/deployment.json).
 #
 # Usage:
 #   notify.sh limited <reset_epoch>   # engine hit a usage limit, auto-resuming
@@ -8,7 +8,7 @@
 #   notify.sh stalled  <age_seconds>  # watchdog: heartbeat went stale
 #
 # Token (kept OFF chat / out of git): $LINEAR_API_TOKEN or
-#   ~/.config/autodev/<client>.linear.token  (linear.mjs resolves it)
+#   ~/.config/autodev/<client>.linear.token  (tracker.mjs resolves it)
 set -uo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -32,5 +32,5 @@ case "$KIND" in
 esac
 
 log "$TITLE"
-# linear.mjs files the issue (retry/backoff); always keep the local log as a fallback.
-node "$HERE/linear.mjs" create-issue --title "$TITLE" >> "$LOG" 2>&1 || log "linear post failed (logged locally only)"
+# tracker.mjs files the issue (retry/backoff); always keep the local log as a fallback.
+node "$HERE/tracker.mjs" create-issue --title "$TITLE" >> "$LOG" 2>&1 || log "linear post failed (logged locally only)"

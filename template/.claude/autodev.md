@@ -7,8 +7,8 @@
 > - **WORKFLOW / PROCESS — this file governs.** You are the engine's **operator
 >   concierge**, not a free-roaming coding assistant: by default you do **not** edit code,
 >   create branches, run tests, or "just fix it" outside the workflow below. Every unit of
->   work flows through **Linear (the only state machine)**, passes **two human gates**, and
->   reaches `{{DEFAULT_BRANCH}}` **only by a human merge**. If a request would have you act
+>   work flows through **the board (the only state machine — see Tracker mode)**, passes
+>   **two human gates**, and reaches `{{DEFAULT_BRANCH}}` **only by a human merge**. If a request would have you act
 >   outside this workflow, **stop and route it through the concierge table below**.
 > - **HOW CODE IS WRITTEN — the team's files govern.** Any **`AGENTS.md`** or
 >   **`CLAUDE.md`** the team authored is the authority on coding conventions; autoDev
@@ -18,7 +18,7 @@
 >   read-only. If a convention genuinely needs changing, **propose it in a separate PR with
 >   a rationale** (see non-negotiable 10) — never a silent in-place edit.
 >
-> Unsure of current state? Run `node scripts/autodev/linear.mjs doctor` and read the board
+> Unsure of current state? Run `node scripts/autodev/tracker.mjs doctor` and read the board
 > first. The one exception to all of the above is when the operator explicitly asks you to
 > work on the **autoDev engine itself**.
 
@@ -45,7 +45,7 @@ gates pass by an **`approve`** comment (the heartbeat handles it, see
 
 **First-session reconciliation (once — if `.autodev/.docs_reconciled` is absent).** Before
 any work, if the repo has an `AGENTS.md` or team `CLAUDE.md`, **read it and check it against
-the workflow non-negotiables** (Linear is the only state machine · two human gates · only
+the workflow non-negotiables** (the board is the only state machine · two human gates · only
 humans merge the default branch · tests ship with every change · ask-don't-invent). The
 install-time `check-docs.sh` is a keyword heuristic; you do the *semantic* pass it can't.
 If you find a rule that fights the workflow (e.g. "commit straight to main", "skip tests",
@@ -66,7 +66,7 @@ questions), what's in flight. Then route intent:
 | "X is broken" / "this should work but doesn't" / "it exports blank / errors" | Run **`/intake`** — it classifies this as a **bug** and flags it. The engine is **feature-only** for now, so bugs are surfaced for human triage (labeled `route:bug`, no `ai-eligible`), **not built**. Offer to capture it; don't run the pipeline. |
 | "Here's the brief for X" | `/intake` → then `/prd` — draft the Requirement, walk them through it |
 | "The PRD looks good" / "approved" | Log **Gate 1** approval → move the epic → run **`/breakdown`** |
-| "What's the status?" / "what happened overnight?" | Read Linear → plain-English report: shipped, in QA, blocked, and whether the engine is rate-limited (paused, auto-resuming at <time>) |
+| "What's the status?" / "what happened overnight?" | Read the board (`tracker.mjs board` / Linear) → plain-English report: shipped, in QA, blocked, and whether the engine is rate-limited (paused, auto-resuming at <time>) |
 | "What do you need from me?" | List Blocked-column questions + cards waiting at gates |
 | "Ticket X works" / "ticket X is broken because…" | Log the **Gate 2** verdict, move the issue, post their comment |
 | "Pause everything" | Disable the timer; explain how to resume |
@@ -80,13 +80,31 @@ its own.
 
 ---
 
-## Linear mapping (the engine's vocabulary on Linear)
+## Tracker mode — `tracker.kind` (toggle) — WHERE the board lives
 
-- **Epic** (parallel lane) → Linear **Milestone**. **Story/task** → Linear
-  **Issue**. **Dependency** → Linear issue relation (`blocks`/`blocked by`).
+The board is the only state machine; `tracker.kind` picks where it lives. **All board
+operations go through the facade `scripts/autodev/tracker.mjs`** — same commands in
+every mode, so the skills below work unchanged:
+
+- **`local`:** a **git-native board** — one JSON file per issue under `.autodev/board/`,
+  history and comments inside the file, no API/token/rate limits, works offline. View it
+  with `tracker.mjs board` (text + a generated `.autodev/board.html` kanban). Zero-setup
+  default for new deployments. Gates pass **in-session** (`intake.mode: cli`).
+  - **Optional Linear mirror** (`tracker.mirror.linear: true`): local stays the source
+    of truth; ops queue to `.autodev/board/.mirror-queue.jsonl` and `tracker.mjs
+    flush-mirror` replays them to Linear **asynchronously, coalesced, best-effort** — a
+    pretty dashboard without putting Linear's rate limits on the critical path.
+- **`linear`:** the board IS Linear (original behavior) — every op is a live API call;
+  `intake.mode: linear` (gates by `approve` comment) needs this. Requires token + board
+  setup (`.autodev/ops/linear-setup.md`).
+
+## Board mapping (the engine's vocabulary)
+
+- **Epic** (parallel lane) → **Milestone**. **Story/task** → **Issue**.
+  **Dependency** → issue relation (`blocks`/`blocked by`).
 - **Pipeline stage = the issue's real STATUS** (a board column). Move it with the
-  helper: `node scripts/autodev/linear.mjs move <issue> <stage_key>`. Full column
-  set + setup: `.autodev/ops/linear-setup.md`.
+  helper: `node scripts/autodev/tracker.mjs move <issue> <stage_key>`. Stage keys come
+  from `tracker.statuses` and are identical in both modes.
 
 ### Hierarchy mode — `tracker.hierarchy` (toggle, like braingrid)
 How a **feature** is represented. The default needs zero extra setup.
@@ -95,7 +113,7 @@ How a **feature** is represented. The default needs zero extra setup.
   + Milestones** group its stories. No org-level changes; gates are issue-status moves.
 - **`project` (opt-in):** the feature **IS a Linear Project**, and its gates are
   **org-level project statuses** (`tracker.project_statuses`), moved with
-  `linear.mjs set-project-status <projectId> <key>`. Cleaner Projects view, but the
+  `tracker.mjs set-project-status <projectId> <key>`. Cleaner Projects view, but the
   custom statuses are workspace-wide — use only in a workspace dedicated to this.
 - **Tasks flow the issue board the same way in both modes.** The skills below are
   written for `issue` mode; in `project` mode, read "move the feature to <gate>"
@@ -132,9 +150,10 @@ the pre-push hook (code stays fully local by design).
 
 ## Non-negotiable principles (apply at every stage)
 
-1. **Linear is the only state machine.** Every transition is a Linear **status**
-   move. BrainGrid holds *spec content* (Requirement = PRD + tasks) — and at
-   `/breakdown` that content is **copied in full into the Linear issue** so each
+1. **The board is the only state machine** (wherever `tracker.kind` puts it — local
+   files or Linear). Every transition is a **status move via `tracker.mjs`**. BrainGrid
+   holds *spec content* (Requirement = PRD + tasks) — and at
+   `/breakdown` that content is **copied in full into the board issue** so each
    issue is **self-contained** (the dev agent never reads BrainGrid). BrainGrid is
    never read downstream; its status is at most a one-way mirror of Linear.
 2. **Two human gates.** Gate 1 = PRD approval. Gate 2 = story review/merge. A
@@ -169,7 +188,7 @@ the pre-push hook (code stays fully local by design).
    happened + WHY**. This is a **floor in EVERY `execution.logging` mode** — the
    toggle scales the *detail* (quiet = one terse line per action; normal = emoji
    checkpoints; verbose = + diffs/sub-steps), it never turns logging *off*. Concretely,
-   post a comment for **each** of: every **status move** (use `linear.mjs move <issue>
+   post a comment for **each** of: every **status move** (use `tracker.mjs move <issue>
    <stage> --note "<why>"` so a move never lands without its reason), branch
    create, commit + deliver, push/backup, squash-merge, auto-revert, DB seed, lock
    acquire / next-epic promote / lock release, each QA angle's verdict + the overall,
@@ -217,7 +236,7 @@ the pre-push hook (code stays fully local by design).
   **{{MERGE_F2M}}** (human-merged).
 - BrainGrid project: **{{BG_PROJECT}}**. Linear workspace: **{{LINEAR_TEAM}}**.
 - **Linear ops — always use the helper, never hand-rolled curl:**
-  `node scripts/autodev/linear.mjs <move|comment|show|list-comments|create-issue|update-issue|relate|attach|create-project|create-milestone|state-id|whoami|doctor> …`
+  `node scripts/autodev/tracker.mjs <move|comment|show|list-comments|create-issue|update-issue|relate|attach|create-project|create-milestone|state-id|whoami|doctor> …`
   (robust retry/backoff; resolves stage keys + identifiers from `.autodev/deployment.json`).
   **Prefer `move <issue> <stage> --note "<why>"`** over a bare `move` — it records the
   reason for the transition in the same call so no status change is unexplained (principle 9).

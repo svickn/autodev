@@ -35,7 +35,8 @@ autoDev/
 │   │   ├── session-init.sh          # SessionStart hook — re-orients every session so autoDev (not ad-hoc CC) drives
 │   │   ├── detect-conventions.sh    # scans the target repo → .autodev/conventions.md (use generated types · the theme · reuse)
 │   │   ├── check-docs.sh            # first-install scan: flags rules in your AGENTS.md/CLAUDE.md that fight the workflow
-│   │   ├── linear.mjs               # the Linear helper (move/comment/show/update/relate/attach/create-… )
+│   │   ├── tracker.mjs              # THE board facade (move/comment/…/board/flush-mirror) — local git-native board or Linear
+│   │   ├── linear.mjs               # the Linear driver behind tracker.mjs (kind=linear / mirror)
 │   │   ├── report.mjs               # periodic operator digest (reporting.cadence)
 │   │   ├── doctor.sh                # preflight: tools · toolchain · token · config ids · hermetic safety · visual-QA driver · docs conflicts
 │   │   ├── devloop-tick.sh          # timer entry: portable lock + rate-limit gate + tick + digest
@@ -72,8 +73,10 @@ The engine is **client-agnostic**; everything per-client lives in the one config
   convention change comes as a separate PR with rationale, never a silent in-place edit.
   One-time: accept the workspace-trust prompt so the hook runs.
 - **The board is the only state machine** — every transition is a live status move
-  (`linear.mjs move …`); cards flow through every column so non-technical operators
+  (`tracker.mjs move …`); cards flow through every column so non-technical operators
   watch work progress in real time. A per-tick reconcile self-heals dropped moves.
+  **Where the board lives is a toggle** (`tracker.kind`): a **git-native local board**
+  (zero setup, no tokens, no rate limits, optional async Linear mirror) or Linear live.
 - **Two human gates** — PRD approval (Gate 1), story/feature review (Gate 2) — and
   **only humans merge to the default branch** (branch protection, not trust).
 - **Tests ship with every change; QA runs for real** — three angles (conformance ·
@@ -98,6 +101,8 @@ The engine is **client-agnostic**; everything per-client lives in the one config
 
 | Toggle | Options | Default |
 |---|---|---|
+| `tracker.kind` | `local` (git-native board — zero setup, no tokens/rate limits, `tracker.mjs board` view) **or** `linear` (the board is Linear, live) | `linear` (existing) · `local` recommended for new |
+| `tracker.mirror.linear` | local mode: also mirror to Linear async (queued + coalesced, off the critical path) | `false` |
 | `braingrid.enabled` | BrainGrid spec authoring **or** agent (PM + PjM) fallback | `true` |
 | `intake.mode` | `cli` (in-session) **or** `linear` (ticket + comments, no terminal) | `cli` |
 | `tracker.hierarchy` | `issue` (feature on the board) **or** `project` (feature-as-Project, org-wide statuses) | `issue` |

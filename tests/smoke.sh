@@ -60,6 +60,17 @@ check "human: never blocked"                 bash -c "cd '$TGT' && echo '$REFS_M
 echo "docs conflict scan:"
 check "flags 'commit directly to main'" bash -c "bash '$TGT/scripts/autodev/check-docs.sh' '$TGT' | grep -q 'only humans merge'"
 
+echo "local tracker (git-native board):"
+jq '.tracker.kind="local"' "$TGT/.autodev/deployment.json" > "$TGT/.autodev/t" && mv "$TGT/.autodev/t" "$TGT/.autodev/deployment.json"
+TRK="$TGT/scripts/autodev/tracker.mjs"
+LID=$(cd "$TGT" && node "$TRK" create-issue --title "Smoke story" --stage ready_for_ai_dev --labels ai-eligible 2>/dev/null)
+check "create-issue returns an id" test -n "$LID"
+check "move + note" bash -c "cd '$TGT' && node '$TRK' move '$LID' ai_development --note 'dev started' | grep -q 'AI Development'"
+check "comment" bash -c "cd '$TGT' && node '$TRK' comment '$LID' 'progress'"
+check "history recorded in issue file" bash -c "jq -e '.history | length >= 2' '$TGT/.autodev/board/$LID.json'"
+check "board renders html" bash -c "cd '$TGT' && node '$TRK' board >/dev/null && test -f '$TGT/.autodev/board.html'"
+check "tracker doctor ok" bash -c "cd '$TGT' && node '$TRK' doctor | grep -q 'local board'"
+
 echo
 if [[ $FAIL -eq 0 ]]; then echo "smoke: PASS"; else echo "smoke: FAIL"; fi
 exit $FAIL

@@ -68,14 +68,26 @@ else
   ok "no .tool-versions (toolchain check skipped)"
 fi
 
-echo "linear (live):"
+echo "tracker ($(jq -r '.tracker.kind // "linear"' "$CONFIG")):"
 CLIENT=$(jq -r '.client_name' "$CONFIG")
-if [[ -n "${LINEAR_API_TOKEN:-}" ]] || [[ -f "$HOME/.config/autodev/$CLIENT.linear.token" ]]; then
+KIND=$(jq -r '.tracker.kind // "linear"' "$CONFIG")
+MIRROR=$(jq -r '.tracker.mirror.linear // false' "$CONFIG")
+if [[ "$KIND" == "local" ]]; then
+  if OUT=$(node "$HERE/tracker.mjs" doctor 2>&1); then ok "$OUT"; else bad "$OUT"; fi
+  if [[ "$MIRROR" == "true" ]]; then
+    # mirroring is async/best-effort, so a missing token is a warn, not a fail
+    if [[ -n "${LINEAR_API_TOKEN:-}" ]] || [[ -f "$HOME/.config/autodev/$CLIENT.linear.token" ]]; then
+      ok "mirror token present (flush with: node scripts/autodev/tracker.mjs flush-mirror)"
+    else
+      warn "tracker.mirror.linear is on but no Linear token — ops will queue until one exists"
+    fi
+  fi
+elif [[ -n "${LINEAR_API_TOKEN:-}" ]] || [[ -f "$HOME/.config/autodev/$CLIENT.linear.token" ]]; then
   ok "token present"
   # validates token + team + every configured status id against live Linear
   if OUT=$(node "$HERE/linear.mjs" doctor 2>&1); then ok "$OUT"; else bad "$OUT"; fi
 else
-  bad "no Linear token (\$LINEAR_API_TOKEN or ~/.config/autodev/$CLIENT.linear.token)"
+  bad "no Linear token (\$LINEAR_API_TOKEN or ~/.config/autodev/$CLIENT.linear.token) — or set tracker.kind=local (no token needed)"
 fi
 
 echo "braingrid:"
