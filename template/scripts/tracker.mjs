@@ -194,8 +194,11 @@ const local = {
     const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
     const cols = order.map((key) => {
       const rows = all.filter((i) => i.stage === key);
-      const cards = rows.map((i) =>
-        `<div class="card"><b>${esc(i.id)}</b> ${esc(i.title)}<div class="meta">${esc(i.labels.join(' '))}</div></div>`).join('');
+      const cards = rows.map((i) => {
+        const links = (i.attachments || [])
+          .map((a) => `<a href="${esc(a.url)}" target="_blank">${esc(a.title || 'link')}</a>`).join(' · ');
+        return `<div class="card"><b>${esc(i.id)}</b> ${esc(i.title)}<div class="meta">${esc(i.labels.join(' '))}${links ? ` · ${links}` : ''}</div></div>`;
+      }).join('');
       return `<div class="col"><h3>${esc(stageName(key))} <span>${rows.length}</span></h3>${cards}</div>`;
     }).join('');
     writeFileSync(htmlPath, `<!doctype html><meta charset="utf-8"><title>autoDev board — ${esc(cfg.client_name || '')}</title>

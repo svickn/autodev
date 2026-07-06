@@ -59,7 +59,9 @@ assembled branch:
 
 Then generate the **acceptance package** (post on the feature issue / Project) —
 **detailed but to-the-point; the TEST CHECKLIST leads, evidence follows:**
-1. **🖥️ Where:** the preview URL (below) — server already running.
+1. **🖥️ Where:** the preview URL (below) — server already running — and the **code
+   links**: the feature branch on GitHub (and the feature PR once it exists), also
+   attached to the ticket via `tracker.mjs attach` so they're one click from the card.
 2. **✅ Test checklist** — one numbered item per acceptance-worthy behavior, each a
    single line: **do X → at `<URL path / screen>` → expect Y**. Cover every story's
    critical path + the cross-story flows; minutes to run, not an afternoon. This is
@@ -84,7 +86,9 @@ sign-off"`** (project mode: the equivalent `acceptance` project-status move).
 **Stop — human decision.**
 
 ## 3 · Ship to `{{DEFAULT_BRANCH}}` + sign-off (humans only) — per Delivery mode
-- **`draft_pr`:** only a **human** merges the feature PR to `{{DEFAULT_BRANCH}}` —
+- **`draft_pr`:** open the feature PR if not already open and **attach its URL to the
+  feature** (`tracker.mjs attach <feature> <pr-url> --title "feature PR"`); only a
+  **human** merges it to `{{DEFAULT_BRANCH}}` —
   branch protection enforces this; the bot never can. After it deploys, run a
   **post-deploy smoke** against the REAL environment (the deployed URL, not
   localhost), regenerate the report; **final prod sign-off is the human's**. If the

@@ -115,10 +115,12 @@ blocked --note "🛑 blocked — requirements gap: <the specific question>"`.
 - Missing human-only setup (env var, key, shared-DB migration) → `move <issue>
   blocked --note "🛑 blocked — needs human setup: <the exact ask>"`.
 Then commit to the story branch (`[sc-<id>]` in the message), **deliver per the
-Delivery mode** (autodev.md: `draft_pr` → open/update a draft PR; `local_diff` → keep
-local, no push/PR), and `move <issue> ai_qa --note "✅ Dev done — <what was built> ·
-files <…> · tests <…> · {{CMD_TEST}} ✓ · lint ✓ · build ✓ · delivery: <PR url | local
-diff cmd>"` — the review artifact must be named so the operator can find it.
+Delivery mode** (autodev.md: `draft_pr` → open/update a draft PR, and **on first open
+attach its URL to the story** — `tracker.mjs attach <issue> <pr-url> --title "draft
+PR"`; `local_diff` → keep local, no push/PR), and `move <issue> ai_qa --note "✅ Dev
+done — <what was built> · files <…> · tests <…> · {{CMD_TEST}} ✓ · lint ✓ · build ✓ ·
+delivery: <PR url | local diff cmd>"` — the review artifact must be named so the
+operator can find it.
 
 ## 6 · AI QA — three always-run angles + a conditional visual angle; live is advisory
 **Hermetic FIRST (B3 · SAFETY):** before ANY test/build/app/live run, export
@@ -228,8 +230,9 @@ When all the epic's stories are merged into the feature branch and it's green:
 - **Run `/merge-verify` §2** — whole-feature acceptance QA (integrated suites + live
   system smoke) → **acceptance report** → the acceptance gate.
 - **`per_story`:** stories already approved → deliver the assembled feature per the
-  Delivery mode (`draft_pr` → open the feature PR to `{{DEFAULT_BRANCH}}`; `local_diff`
-  → present the local feature-branch diff; never push).
+  Delivery mode (`draft_pr` → open the feature PR to `{{DEFAULT_BRANCH}}` **and attach
+  its URL to the feature** — `tracker.mjs attach <feature> <pr-url> --title "feature
+  PR"`; `local_diff` → present the local feature-branch diff; never push).
 - **`per_feature`:** `move` the feature to `ready_for_human_acceptance` (project mode:
   `acceptance` project-status). The human acceptance-tests via the report + manual
   scripts, then delivers per the Delivery mode. A feature-level failure localizes to a

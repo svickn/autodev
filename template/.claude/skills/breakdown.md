@@ -85,6 +85,10 @@ Read `.autodev/deployment.json` for: tracker states/labels, BrainGrid project,
    🗒️ **Log on the feature** (the git actions aren't visible on the board otherwise):
    `🌱 breakdown done — feature branch <name> created · <N> stories across <M>
    epics released to AI Dev` (+ `· backup pushed → <remote>` if it ran in step 6).
+   **Attach the branch link** (delivery `draft_pr` — once the branch exists remotely):
+   `tracker.mjs attach <feature> <repo.url>/tree/{{FEATURE_PREFIX}}<slug> --title
+   "feature branch"` so the card click-throughs to the code. (`local_diff`: no remote —
+   the local commands are already posted.)
 
 > **Incremental breakdown (B6 — if `execution.incremental_breakdown`):** for a big
 > feature, don't decompose everything at Gate 1. Break down **one milestone/epic at
