@@ -84,6 +84,15 @@ The engine is **client-agnostic**; everything per-client lives in the one config
   (zero setup, no tokens, no rate limits, optional async Linear mirror) or Linear live.
 - **Two human gates** — PRD approval (Gate 1), story/feature review (Gate 2) — and
   **only humans merge to the default branch** (branch protection, not trust).
+- **Autopilot mode (the PM handoff):** hand over a PRD → get ONE approval package
+  (≤10-line summary + only the gaps that matter) → approve → tickets build themselves
+  and **parallel lanes execute with no mid-build questions** (only genuine Blocks
+  interrupt) → you're called back once, at acceptance, with the **server already
+  running + a to-the-point test checklist** (do X → at URL → expect Y). Set
+  `review.granularity: per_feature` + `auto_merge_to_feature_branch: true`, or pick
+  "autopilot" in `./install.sh --init`. Progress updates stay ambient — and to get
+  them **on your phone**, run `/remote-control` in Claude Code and pair the Claude
+  mobile app (enable push in `/config` to get pinged when the build lands or needs you).
 - **Tests ship with every change; QA runs for real** — three angles (conformance ·
   adversarial · regression), hidden adversarial tests, on an executable env. The
   **live-browser check is advisory**, never an auto-block.

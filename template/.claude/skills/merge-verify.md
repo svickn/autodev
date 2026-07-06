@@ -57,10 +57,17 @@ assembled branch:
 - A real failure here → localize to a story (`[sc-<id>]` trail), back to
   `ai_development`, re-QA — same as §1. Don't present a feature that fails integrated.
 
-Then generate a **human-readable acceptance report** (post on the feature issue /
-Project): stories shipped + QA verdicts · the **integrated-suite** result · the
-**live-system** screenshots · CI status · anything flagged-not-blocked · the manual
-test script.
+Then generate the **acceptance package** (post on the feature issue / Project) —
+**detailed but to-the-point; the TEST CHECKLIST leads, evidence follows:**
+1. **🖥️ Where:** the preview URL (below) — server already running.
+2. **✅ Test checklist** — one numbered item per acceptance-worthy behavior, each a
+   single line: **do X → at `<URL path / screen>` → expect Y**. Cover every story's
+   critical path + the cross-story flows; minutes to run, not an afternoon. This is
+   the operator's actual to-do list — write it for a human with 10 minutes.
+3. **⚠️ Flags to eyeball:** anything advisory-flagged (live check, visual ⚠, known
+   baseline) — one line each with where to look.
+4. **Evidence (collapsed/after the fold):** stories shipped + QA verdicts ·
+   integrated-suite result · live-system screenshots · CI status.
 
 **Preview environment (if `preview.enabled`) — the human accepts a RUNNING PRODUCT,
 not a diff.** Start the assembled feature-branch app (`preview.command`, default

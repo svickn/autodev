@@ -54,18 +54,25 @@ if [[ "$CONFIG" == "--init" ]]; then
   fi
   C_TEST=$(ask "Test command" "${C_TEST:-FILL_ME}")
   TRACKER=$(ask "Tracker: local (git-native board, zero setup) or linear" "local")
+  MODE=$(ask "Mode: hands-on (review every story) or autopilot (approve the PRD + accept the finished feature; no mid-build gates)" "hands-on")
   A_NAME=$(ask "Assistant name" "Marj")
+
+  # autopilot = per_feature + auto-merge (two human touches: Gate 1 + acceptance)
+  GRAN=per_story; AUTOMERGE=false
+  [[ "$MODE" == a* ]] && { GRAN=per_feature; AUTOMERGE=true; }
 
   OUT="$ENGINE_DIR/config/$SLUG.json"
   [[ -f "$OUT" ]] && { echo "error: $OUT already exists — edit it or pick another name" >&2; exit 1; }
   jq --arg n "$T_NAME" --arg an "$A_NAME" --arg r "$T_REPO" --arg b "$T_BRANCH" --arg k "$TRACKER" \
+     --arg g "$GRAN" --argjson am "$AUTOMERGE" \
      --arg ci "${C_INSTALL:-FILL_ME}" --arg ct "$C_TEST" --arg cl "${C_LINT:-FILL_ME}" \
      --arg cb "${C_BUILD:-FILL_ME}" --arg cr "${C_RUN:-FILL_ME}" \
      '.client_name=$n | .assistant_name=$an | .repo.local_path=$r | .repo.default_branch=$b
-      | .tracker.kind=$k | .commands.install=$ci | .commands.test=$ct | .commands.lint=$cl
+      | .tracker.kind=$k | .review.granularity=$g | .review.auto_merge_to_feature_branch=$am
+      | .commands.install=$ci | .commands.test=$ct | .commands.lint=$cl
       | .commands.build=$cb | .commands.app_run=$cr' \
      "$ENGINE_DIR/config/deployment.example.json" > "$OUT"
-  echo "✓ wrote $OUT (tracker.kind=$TRACKER$([ "$TRACKER" = local ] && echo ' — no Linear setup needed'))"
+  echo "✓ wrote $OUT (tracker.kind=$TRACKER$([ "$TRACKER" = local ] && echo ' — no Linear setup needed') · mode=$([ "$GRAN" = per_feature ] && echo autopilot || echo hands-on))"
   YN=$(ask "Install into $T_REPO now? (y/n)" "n")
   [[ "$YN" == y* ]] && exec bash "$ENGINE_DIR/install.sh" "$OUT"
   echo "when ready: ./install.sh config/$SLUG.json"

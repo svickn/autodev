@@ -91,6 +91,19 @@ The steps below are identical in both modes — only the *medium* differs
    acceptance criteria becomes a story QA can't actually check — the quality
    ceiling is set right here.)
 
+   **BYO-PRD fast path — the operator hands you a finished PRD/spec** (a doc, a
+   long message, a file): do NOT re-interview what the document already answers.
+   Instead **analyze it** against the checklist above + testable acceptance
+   criteria, then reply with ONE tight approval package:
+   - **Summary** (≤10 lines): what will be built, for whom, the rough epic shape.
+   - **Gaps & assumptions** (only ones that would change what gets built — each as
+     a specific question or a stated assumption to confirm; zero is a fine answer).
+   - **The ask:** "approve to build, answer the gaps, or correct me."
+   One operator `approve` = **Gate 1**. Skip `/prd` authoring (their document IS
+   the PRD — file it as such); on approval go straight to `/breakdown`. Ask-don't-
+   invent still applies: a PRD too thin for testable criteria gets its gaps listed
+   in the package, not silently guessed.
+
 3. **Write the brief** to `specs/<feature-slug>/brief.md` in the repo and commit
    it (on a working branch, not `{{DEFAULT_BRANCH}}`).
    - **Wireframes/designs (C1):** if the request includes mockups/wireframes,

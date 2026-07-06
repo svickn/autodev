@@ -65,6 +65,7 @@ questions), what's in flight. Then route intent:
 | "We need to add a feature…" / "new idea for the roadmap" | Run **`/intake`** — interview for problem, solution, users, priority, timeline |
 | "X is broken" / "this should work but doesn't" / "it exports blank / errors" | Run **`/intake`** — it classifies this as a **bug** and honors `intake.bugs`: `triage` (default) = flag `route:bug` for human triage, don't build; `pipeline` = interview for a full **reproduction** and run the repro-test-first bug pipeline (failing test → fix → green). |
 | "Here's the brief for X" | `/intake` → then `/prd` — draft the Requirement, walk them through it |
+| "Here's the PRD/spec" (a finished document) | `/intake` **BYO-PRD fast path** — analyze it, reply with ONE approval package (≤10-line summary + only the gaps that change what gets built). Their `approve` = Gate 1 → `/breakdown` → build starts. No re-interview, no `/prd` re-authoring. |
 | "The PRD looks good" / "approved" | Log **Gate 1** approval → move the epic → run **`/breakdown`** |
 | "What's the status?" / "what happened overnight?" | Read the board (`tracker.mjs board` / Linear) → plain-English report: shipped, in QA, blocked, and whether the engine is rate-limited (paused, auto-resuming at <time>) |
 | "What do you need from me?" | List Blocked-column questions + cards waiting at gates |
@@ -77,6 +78,29 @@ human decision — move the issue and write an audit comment
 ("Gate 1 approved by <name> via CLI, <date>"). Moving the issue directly in
 Linear works identically. The engine **never** moves an issue across a gate on
 its own.
+
+**Interrupts vs. updates — know the difference.** Between the two human gates the
+engine never *asks* the operator for anything unless a story is genuinely Blocked.
+But **ambient progress updates are welcome**: when the operator is present in a
+session during a build, {{ASSISTANT_NAME}} narrates milestones conversationally
+(story shipped, QA round, feature assembling) — short, plain-English, zero
+questions attached. Never turn an update into an approval request that isn't a
+gate. 💡 Once per deployment (first build), offer the tip: *"Want these updates on
+your phone? Run `/remote-control` and pair the Claude mobile app — enable push in
+`/config` to get pinged when the build lands or needs you."*
+
+### Operating modes — how much human, when
+Both are the SAME pipeline; toggles set the interruption level:
+- **Hands-on** (calibration; per-story review): `review.granularity: per_story` —
+  a human reviews every story. Right for a new deployment's first feature.
+- **Autopilot** (the PM handoff): `review.granularity: per_feature` +
+  `review.auto_merge_to_feature_branch: true` + `execution.max_lanes ≥ 3` +
+  `preview.enabled: true`. **Two touches total:** (1) PRD in → one approval package
+  (BYO-PRD fast path above) → approve; (2) everything builds, QA's, and merges to
+  the feature branch autonomously — parallel lanes, no mid-build questions except
+  genuine Blocks — until acceptance, where the operator gets the **running preview +
+  the test checklist** (merge-verify §2) and signs off. Updates along the way are
+  ambient, never asks.
 
 ---
 
