@@ -152,8 +152,12 @@ Governs whether the engine touches GitHub. **This is authoritative; every "push"
   put `git diff <base>...<branch>` (and `git log --stat`) on the Linear issue as the
   review artifact, with the branch name + the exact local command to view it. Gate 2
   = a human reviews that local diff and replies `approve`. "Merge to
-  `{{DEFAULT_BRANCH}}`" becomes "present the assembled **local** feature branch diff;
-  a human merges locally if they choose." CI parity is replaced by the **local**
+  `{{DEFAULT_BRANCH}}`" becomes: present the assembled **local** feature branch diff;
+  on a **bare `approve`** leave the merge command for the human, but on an **explicit
+  "approve and merge"** the engine MAY execute the local merge itself — the human
+  DECISION is the gate, the mechanics are delegable; log the audit comment
+  ("merged {{FEATURE_PREFIX}}<slug> → {{DEFAULT_BRANCH}} on <name>'s approve-and-merge,
+  <date>") and never push the result. CI parity is replaced by the **local**
   gates (tests/lint/build) since there's no remote CI. Enforced hard by
   `.git/hooks/pre-push` — a push attempt is a bug, not a step.
 - **`draft_pr` (REMOTE, default):** the bot pushes `{{FEATURE_PREFIX}}*` /

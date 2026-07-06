@@ -91,8 +91,10 @@ sign-off"`** (project mode: the equivalent `acceptance` project-status move).
   post-deploy smoke fails, raise it immediately — **`move <feature> blocked --note "🛑
   post-deploy smoke FAILED on <real env> — <evidence>"`**.
 - **`local_diff`:** nothing is pushed/deployed. The engine presents the assembled
-  **local** feature-branch diff + the acceptance report; a human reviews and (if they
-  choose) merges locally. There is no remote prod step — sign-off is on the local run.
+  **local** feature-branch diff + the acceptance package; the human reviews and either
+  merges locally themselves, or says **"approve and merge"** — then the engine executes
+  the local merge (the decision is the gate; log the audit comment; never push). There
+  is no remote prod step — sign-off is on the local run.
 
 ## Guardrails
 - Clean install (`npm ci`-equivalent, no warm cache) is non-negotiable — it's the
