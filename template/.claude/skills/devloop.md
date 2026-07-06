@@ -134,6 +134,13 @@ strings encode required exclusions/concurrency; substituting the bare test comma
 produces false reds. Judge layers with a documented `qa._known_baseline` against that
 baseline, not zero.
 
+**Process hygiene (a leaky suite must not accumulate orphans across ticks):** after
+each QA run (and any app/preview launch the engine started and no longer needs), check
+for processes the run leaked — orphaned test children, stray dev servers — and kill
+them. 🗒️ `🧹 reaped <n> leaked test processes` (only when n>0; if the same suite leaks
+every run, flag it on the story as a defect worth a ticket — that's a bug in the
+suite, not a cleanup chore).
+
 🗒️ **log:** `▶️ AI QA started · 3 angles` (+ `· visual` if UI-heavy; retries: `🔁 QA round <n>`).
 
 Spawn **fresh, independent** reviewers from `personas.qa_angles` — never the dev
