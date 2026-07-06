@@ -116,7 +116,8 @@ The steps below are identical in both modes — only the *medium* differs
 4. **Create the feature** (per `tracker.hierarchy` — see autodev.md):
    - **`issue` (default):** create a **feature ISSUE** in `New Request` (team
      `{{LINEAR_TEAM}}`), titled from the feature, linked to the brief, labeled
-     `route:feature`. It carries the feature through the front half (New Request →
+     `route:feature` **+ `tracker.instance_label`** (every issue this engine creates
+     carries its instance tag — principle 10 ownership on shared boards). It carries the feature through the front half (New Request →
      Clarifying (H) → PRD Review (H)); at `/breakdown` a Project + Milestones are
      added to group its stories.
    - **`project` (opt-in):** create a **Linear Project** (the feature) and set its

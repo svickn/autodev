@@ -68,7 +68,8 @@ if [[ "$CONFIG" == "--init" ]]; then
      --arg ci "${C_INSTALL:-FILL_ME}" --arg ct "$C_TEST" --arg cl "${C_LINT:-FILL_ME}" \
      --arg cb "${C_BUILD:-FILL_ME}" --arg cr "${C_RUN:-FILL_ME}" \
      '.client_name=$n | .assistant_name=$an | .repo.local_path=$r | .repo.default_branch=$b
-      | .tracker.kind=$k | .review.granularity=$g | .review.auto_merge_to_feature_branch=$am
+      | .tracker.kind=$k | .tracker.instance_label=("autodev:" + ($n | ascii_downcase | gsub("[^a-z0-9]+"; "-") | gsub("^-+|-+$"; "")))
+      | .review.granularity=$g | .review.auto_merge_to_feature_branch=$am
       | .commands.install=$ci | .commands.test=$ct | .commands.lint=$cl
       | .commands.build=$cb | .commands.app_run=$cr' \
      "$ENGINE_DIR/config/deployment.example.json" > "$OUT"

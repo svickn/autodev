@@ -42,7 +42,9 @@ Read `.autodev/deployment.json` for: tracker states/labels, BrainGrid project,
      acceptance criteria, implementation/build plan, test plan, edge cases).
      **Write that entire markdown into the issue body**, e.g.
      `node scripts/autodev/tracker.mjs create-issue --title "<task>"
-     --desc "<full task markdown>" --stage ready_for_ai_dev --labels "ai-eligible,…"`,
+     --desc "<full task markdown>" --stage ready_for_ai_dev --labels
+     "ai-eligible,<tracker.instance_label>,…"` (the instance tag goes on EVERY issue
+     this engine creates — principle 10),
      assigned to its epic's Milestone. Don't summarize or link-only — copy the data in.
    - **(Fallback)** project-manager-senior writes the same complete spec (criteria,
      plan, tests, edge cases) directly into the issue body.

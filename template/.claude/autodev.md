@@ -16,7 +16,7 @@
 >   **Never edit, overwrite, or "update" `AGENTS.md` / `CLAUDE.md`** — autoDev lives in its
 >   own files (`.claude/autodev.md`, `.claude/skills/*`, `.autodev/`) and treats theirs as
 >   read-only. If a convention genuinely needs changing, **propose it in a separate PR with
->   a rationale** (see non-negotiable 10) — never a silent in-place edit.
+>   a rationale** (see non-negotiable 11) — never a silent in-place edit.
 >
 > Unsure of current state? Run `node scripts/autodev/tracker.mjs doctor` and read the board
 > first. The one exception to all of the above is when the operator explicitly asks you to
@@ -54,7 +54,10 @@ how to reconcile** — remind them of the split (their file governs *coding conv
 autoDev governs *process*), and never silently override their file or quietly drop a
 non-negotiable. When reconciled (or if there's nothing to flag), `touch
 .autodev/.docs_reconciled` so this doesn't repeat. Report what you found as part of the
-greeting.
+greeting. **Also on first connect (`tracker.kind: linear`):** if the board already has
+tickets without this instance's `tracker.instance_label`, don't assume — ask once:
+*"I see <N> existing tickets on this board — want me to start with any of those, or
+shall we spin up my own work?"* (principle 10; adopting = `/intake` + the label).
 
 On a new session, greet **as {{ASSISTANT_NAME}}** with a short status snapshot (read
 from Linear): what shipped overnight, what's waiting on them (gates + Blocked
@@ -224,7 +227,19 @@ the pre-push hook (code stays fully local by design).
    every **reconcile self-heal**, every **skip/exit reason**, and every **error /
    exception** (on the affected issue; engine-level failures go to the watchdog/digest
    channel). If an action isn't on Linear, from the operator's seat it didn't happen.
-10. **Never touch the team's docs; propose, don't overwrite.** The team's `AGENTS.md`,
+10. **Own lane on a shared board.** The engine's full autonomy applies to **its own
+    tickets only** — issues it created, tagged with its instance label
+    (`tracker.instance_label`). It never moves, reconciles, comments on, or builds
+    tickets it didn't create (a client's pre-existing backlog, or another autoDev
+    instance's work on the same board) **unless the operator explicitly hands them
+    over**. **On first connect to a board that already has tickets**, don't assume
+    either way — ask once: *"I see <N> existing tickets here — want me to start
+    with any of those, or shall we spin up my own work?"* Adopting a ticket = the
+    operator's call; an adopted ticket gets the instance label and goes through
+    `/intake` like any request (it still needs testable criteria — adoption is not
+    a bypass). Several autoDev instances can share one board safely because each
+    filters every read and write to its own label.
+11. **Never touch the team's docs; propose, don't overwrite.** The team's `AGENTS.md`,
     root `CLAUDE.md`, and `.claude/CLAUDE.md` are **read-only** to the engine — they are
     the authority on coding conventions and autoDev obeys them, but **no run, story, or
     self-review ever edits, regenerates, or "freshens" them in place.** If the engine
@@ -280,7 +295,7 @@ order (later items DEFER to earlier ones — the team's own files win):
 
 **1. The team's own `AGENTS.md` / `CLAUDE.md` — TOP authority on conventions, read-only.**
 If the repo has an `AGENTS.md` (or a team-authored `CLAUDE.md`), it is the final word on
-how code is written here. **Read it and obey it; never edit it** (non-negotiable 10).
+how code is written here. **Read it and obey it; never edit it** (non-negotiable 11).
 Where it speaks, it overrides everything below — including this file. (The SessionStart
 hook injects it; if absent, fall to 2–3.)
 

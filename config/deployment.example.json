@@ -32,6 +32,8 @@
       "linear": false,
       "_note": "local kind only: true = ALSO mirror to Linear asynchronously (best-effort dashboard). Ops queue to .autodev/board/.mirror-queue.jsonl; drain with 'tracker.mjs flush-mirror' (e.g. at the end of each tick). Local stays the source of truth — Linear rate limits never block the pipeline."
     },
+    "instance_label": "autodev:acmeco",
+    "_instance_label_note": "THIS instance's ownership tag on a SHARED board (multi-autoDev safety). Every issue the engine creates gets this label, and every read/write (selection, reconcile, intake pickup) filters to it — so 4 autoDevs on one Linear team never touch each other's (or the client's pre-existing) tickets. Convention: autodev:<client-slug>. Create the label in Linear (like ai-eligible). Local boards are per-repo, so it matters only for kind=linear.",
     "mcp": "mcp__linear",
     "_note": "Use the CLIENT's OWN Linear workspace/team (connected via their auth). Never a different workspace.",
     "team": "AcmeCo Engineering",

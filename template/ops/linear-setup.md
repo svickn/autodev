@@ -89,7 +89,10 @@ How a **feature** is represented. Default needs nothing beyond the columns above
 
 Control labels: `ai-eligible` (applied ONLY by `/breakdown`) · `route:feature` ·
 `route:task` · `route:bug` · `risk:trivial` · `risk:standard` · `risk:sensitive` ·
-`agent:<persona>` (e.g. `agent:backend-architect` — visibility + override).
+`agent:<persona>` (e.g. `agent:backend-architect` — visibility + override) ·
+**the instance tag** `tracker.instance_label` (e.g. `autodev:acmeco`) — this engine's
+ownership mark on every issue it creates; on a shared board each autoDev instance
+reads/writes ONLY issues carrying its own tag.
 
 ## Credentials (runner host — keep OFF the chat / out of git)
 

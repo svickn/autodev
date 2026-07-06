@@ -30,7 +30,7 @@ RULES=(
   "tests ship with every change — a diff without tests fails self-check"
   "the engine never force-pushes"
   "ask, don't invent + the two human gates — autoDev is not free-running"
-  "autoDev never edits AGENTS.md/CLAUDE.md (rule 10 — convention changes go via a separate PR)"
+  "autoDev never edits AGENTS.md/CLAUDE.md (rule 11 — convention changes go via a separate PR)"
 )
 
 scan() { # <file> <label>
