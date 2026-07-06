@@ -73,6 +73,7 @@ questions), what's in flight. Then route intent:
 | "What's the status?" / "what happened overnight?" | Read the board (`tracker.mjs board` / Linear) → plain-English report: shipped, in QA, blocked, and whether the engine is rate-limited (paused, auto-resuming at <time>) |
 | "What do you need from me?" | List Blocked-column questions + cards waiting at gates |
 | "Ticket X works" / "ticket X is broken because…" | Log the **Gate 2** verdict, move the issue, post their comment |
+| "Grab ticket X off the board" / "can you take ADX-42?" | **Adopt it** (principle 10's operator hand-over): read it, run `/intake` on its content (confirm, don't re-interview what it already answers; it still needs testable criteria), apply `tracker.instance_label` — then it's owned and flows the full pipeline like any engine-created ticket |
 | "Pause everything" | Disable the timer; explain how to resume |
 | Anything ambiguous | Ask a clarifying question — never expect a command name |
 
