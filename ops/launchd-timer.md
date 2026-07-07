@@ -28,7 +28,8 @@ RUN_HOME=$(jq -r '.runner.home_dir' "$REPO/.autodev/deployment.json")
 RUN_HOME="${RUN_HOME/#\~/$HOME}"
 
 render() { # <program> <label-suffix> -> writes ~/Library/LaunchAgents/com.autodev.$CLIENT.$2.plist
-  sed -e "s|{{CLIENT_NAME}}|$CLIENT|g" \
+  sed -e "s|{{CLIENT_NAME}}\.tick</string>|$CLIENT.$2</string>|" \
+      -e "s|{{CLIENT_NAME}}|$CLIENT|g" \
       -e "s|{{REPO_PATH}}/scripts/autodev/devloop-tick.sh|$HOME/.autodev/bin/$1|g" \
       -e "s|{{RUN_HOME}}|$RUN_HOME|g" \
       -e "s|{{TICK_SECONDS}}|$(( TICK_MIN * 60 ))|g" \
