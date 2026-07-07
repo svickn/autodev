@@ -1,13 +1,7 @@
----
-name: prd
-description: >
-  Turn a captured brief into an approved PRD for {{CLIENT_NAME}}. Use after
-  intake — when the operator says "draft the PRD", "let's spec X", or "the brief
-  is ready". Produces a PRD (BrainGrid Requirement, or agent-authored fallback)
-  and stops at Gate 1 for the operator's approval. Interactive, human-in-the-loop.
----
-
 # PRD — author the spec, stop at Gate 1
+
+> Read by `/autodev:loop` when a feature has a captured brief but no PRD yet, or by
+> `/autodev:new` on the BYO-PRD fast path. Not independently invokable.
 
 Read deployment config from `.autodev/deployment.json` (personas, tracker
 states, BrainGrid project). Drive this with the **product-manager** persona
