@@ -1,9 +1,10 @@
-# autoDev — a templatized autonomous development engine
+# autoDev — an autonomous development engine, as a Claude Code plugin
 
 autoDev turns an idea into **QA'd, human-reviewable, shipped code** through a
 ticketing board (Linear), driven by Claude Code — mimicking a PM → dev team, made
-operable by non-technical people. It's **reusable**: it installs into *any* client
-repo from a single config file.
+operable by non-technical people. It ships as a **Claude Code plugin**: enable it
+in any repo, run `/autodev:init`, and it drives — no install script, no config
+file to copy.
 
 > **Validated end-to-end** in a sandbox (a 15-story landing page built autonomously,
 > 144 unit + 24 e2e green) **and hardened by a 20-hour autonomous production run** —
@@ -14,69 +15,62 @@ repo from a single config file.
 
 ## What you get
 
+autoDev ships as a **Claude Code plugin** — nothing is copied into your repo.
+Enabling it adds three commands and a couple of guardrail hooks; everything else
+(the engine manual, the per-stage playbooks, the scripts) lives inside the plugin
+package and is read at runtime via `${CLAUDE_PLUGIN_ROOT}`.
+
 ```
-autoDev/
-├── config/deployment.example.json   # per-client config — copy + fill in
-├── install.sh                       # render the engine in + auto-create the Linear board
-├── BACKLOG.md                       # roadmap + run-gap audit (what's shipped / planned)
-├── template/
-│   ├── .claude/
-│   │   ├── autodev.md               # engine manual (concierge + rulebook + toggles) — NOT your CLAUDE.md; loaded via the SessionStart hook
-│   │   ├── settings.json            # allowlisted permissions + SessionStart hook (bot can't merge to main; can't edit your AGENTS.md/CLAUDE.md)
-│   │   ├── commands/devloop.md      # the /devloop SLASH command (heartbeat entry)
-│   │   └── skills/
-│   │       ├── intake.md            # plain-English front door · feature-vs-bug gate · cli|linear · attaches wireframes
-│   │       ├── prd.md               # PRD (BrainGrid preferred · agent fallback) → Gate 1
-│   │       ├── breakdown.md         # → Project · Milestones · Issues (full BrainGrid spec copied in)
-│   │       ├── devloop.md           # one heartbeat: dev → QA → merge · live board moves + comment logging
-│   │       ├── merge-verify.md      # acceptance QA + post-merge clean-room + report + prod sign-off
-│   │       └── _story-template.md   # the story contract
-│   ├── scripts/
-│   │   ├── session-init.sh          # SessionStart hook — re-orients every session so autoDev (not ad-hoc CC) drives
-│   │   ├── detect-conventions.sh    # scans the target repo → .autodev/conventions.md (use generated types · the theme · reuse)
-│   │   ├── check-docs.sh            # first-install scan: flags rules in your AGENTS.md/CLAUDE.md that fight the workflow
-│   │   ├── tracker.mjs              # THE board facade (move/comment/…/board/flush-mirror) — local git-native board or Linear
-│   │   ├── linear.mjs               # the Linear driver behind tracker.mjs (kind=linear / mirror)
-│   │   ├── report.mjs               # periodic operator digest (reporting.cadence)
-│   │   ├── doctor.sh                # preflight: tools · toolchain · token · config ids · hermetic safety · visual-QA driver · docs conflicts
-│   │   ├── devloop-tick.sh          # timer entry: portable lock + rate-limit gate + tick + digest
-│   │   ├── watchdog.sh              # dead-man alarm + hung-tick recovery → Linear
-│   │   └── notify.sh                # rate-limit pause/resume → Linear
-│   └── ops/{launchd.plist.template, linear-setup.md}
+autodev/                              (the plugin package)
+├── .claude-plugin/plugin.json        # plugin manifest
+├── commands/
+│   ├── init.md                       # /autodev:init  — guided one-time setup, writes .autodev/deployment.json
+│   ├── new.md                        # /autodev:new   — the only way work enters the engine
+│   └── loop.md                       # /autodev:loop  — advance one bounded step (PRD → breakdown → dev/QA → merge-verify)
+├── reference/                        # playbooks — read explicitly by the commands above; never auto-triggered
+│   ├── manual.md                     # engine manual: concierge routing, non-negotiables, toggles
+│   ├── intake.md · prd.md · breakdown.md · devloop.md · merge-verify.md · story-template.md
+│   └── deployment.example.json       # the full config schema, used by /autodev:init
+├── scripts/                          # tracker.mjs · linear.mjs · report.mjs · doctor.sh · detect-conventions.sh ·
+│                                      # check-docs.sh · devloop-tick.sh · watchdog.sh · notify.sh
+├── hooks/hooks.json                  # a one-line SessionStart signal + two PreToolUse guardrails (push, docs) — no settings.json write, ever
+├── ops/{linear-setup.md, launchd-timer.md, launchd.plist.template}
+├── BACKLOG.md
 └── docs/
 ```
 
-## Deploy to a new client (rinse and repeat)
+In a client repo, the **entire footprint** is `.autodev/deployment.json` plus
+runtime state created lazily on first use (`.autodev/board/`, `conventions.md`,
+`metrics.jsonl`, `logs/`). Nothing under `.claude/` is ever written.
+
+## Set up a new repo (rinse and repeat)
 
 ```bash
-./install.sh --init            # guided: detects branch/commands from the repo, asks ~5
-                               # questions, defaults to the zero-setup LOCAL board,
-                               # writes config/<name>.json, offers to install
-# (manual alternative:)
-cp config/deployment.example.json config/<client>.json   # fill: repo, branch, commands…
-./install.sh config/<client>.json                        # renders the engine (+ board setup per tracker.kind)
-./install.sh --all                                       # re-render EVERY deployment (fleet upgrade)
-# (if client_name is still unset/placeholder, install prompts for it and saves it back;
-#  set AUTODEV_NONINTERACTIVE=1 to skip the prompt in CI/managed installs)
-scripts/autodev/doctor.sh                                 # preflight — fix any ✗ before running
-# IMPORTANT: start a Claude Code session IN this repo (if you're already in Claude Code,
-#   just open this repo as the workspace / start a new session) and ACCEPT the one-time
-#   trust+hook prompt — that activates the SessionStart hook that makes autoDev drive.
-#   (install.sh prints the exact step for your situation.)
-# then: wire BrainGrid (optional — see below) · connect Linear MCP · bot identity + branch protection
+# in Claude Code, with the autodev plugin enabled and this repo as the workspace:
+/autodev:init      # guided: detects branch/commands from the repo, asks ~5 questions,
+                    # defaults to the zero-setup LOCAL board, writes .autodev/deployment.json
+/autodev:new        # capture the first piece of work
+/autodev:loop        # advance it — re-run any time; nothing runs on its own between calls
 ```
 
-The engine is **client-agnostic**; everything per-client lives in the one config.
+No file copying, no session-restart dance, no trust/hook prompt beyond the plugin's
+own one-time enable. `.autodev/deployment.json` is the entire per-repo footprint;
+everything else the engine needs — the manual, the playbooks, the scripts — lives
+in the plugin and updates automatically when the plugin updates. BrainGrid,
+Linear, and branch-protection wiring are still manual, auth-bound steps —
+`/autodev:init` prints exactly what's left to do.
 
 ## The non-negotiables
 
-- **autoDev drives, not ad-hoc Claude Code — but it stays in its own files.** The engine
-  manual lives at **`.claude/autodev.md`** (never your `CLAUDE.md`), is **authoritative for
-  the WORKFLOW**, and is injected every session by a **`SessionStart` hook** (deterministic,
-  harness-executed). **Your `AGENTS.md` / `CLAUDE.md` stay the authority on coding
-  conventions** — autoDev reads and obeys them and is **denied from editing them**; a
-  convention change comes as a separate PR with rationale, never a silent in-place edit.
-  One-time: accept the workspace-trust prompt so the hook runs.
+- **autoDev only drives when you tell it to — and stays in its own files.** Nothing runs
+  from plain conversation; only **`/autodev:init`**, **`/autodev:new`**, and
+  **`/autodev:loop`** do anything. The engine manual lives in the plugin's
+  **`reference/manual.md`** (never your `CLAUDE.md`) and is read explicitly by those
+  three commands — a one-line `SessionStart` hook is the only ambient behavior, and it
+  just tells you the commands exist. **Your `AGENTS.md` / `CLAUDE.md` stay the authority
+  on coding conventions** — autoDev reads and obeys them, and a `PreToolUse` hook denies
+  any Edit/Write to them; a convention change comes as a separate PR with rationale,
+  never a silent in-place edit.
 - **The board is the only state machine** — every transition is a live status move
   (`tracker.mjs move …`); cards flow through every column so non-technical operators
   watch work progress in real time. A per-tick reconcile self-heals dropped moves.
@@ -90,7 +84,7 @@ The engine is **client-agnostic**; everything per-client lives in the one config
   interrupt) → you're called back once, at acceptance, with the **server already
   running + a to-the-point test checklist** (do X → at URL → expect Y). Set
   `review.granularity: per_feature` + `auto_merge_to_feature_branch: true`, or pick
-  "autopilot" in `./install.sh --init`. Progress updates stay ambient — and to get
+  "autopilot" in `/autodev:init`. Progress updates stay ambient — and to get
   them **on your phone**, run `/remote-control` in Claude Code and pair the Claude
   mobile app (enable push in `/config` to get pinged when the build lands or needs you).
 - **Tests ship with every change; QA runs for real** — three angles (conformance ·
@@ -170,7 +164,7 @@ config. (`braingrid setup cursor` / `openclaw` exist too, but autoDev uses Claud
 The engine routes work to specialist personas from **[agency-agents](https://github.com/msitarzewski/agency-agents)**
 by [@msitarzewski](https://github.com/msitarzewski) (MIT). autoDev does **not** bundle
 them — install them into `~/.claude/agents/` from that repo; routing lives in
-`config/*.json` (`personas.*`):
+`.autodev/deployment.json` (`personas.*`):
 
 | Role | Persona |
 |---|---|

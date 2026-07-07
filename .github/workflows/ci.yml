@@ -26,12 +26,12 @@ jobs:
           find . -name "*.mjs" -not -path "./.git/*" -print0 | xargs -0 -n1 node --check
           echo "all mjs parse"
 
-      - name: JSON validity (configs + settings template)
+      - name: JSON validity (plugin manifest, reference config, hook wiring)
         run: |
           set -e
-          jq -e . config/deployment.example.json >/dev/null
-          # settings.json contains {{PLACEHOLDERS}} inside strings — still valid JSON
-          jq -e . template/.claude/settings.json >/dev/null
+          jq -e . .claude-plugin/plugin.json >/dev/null
+          jq -e . reference/deployment.example.json >/dev/null
+          jq -e . hooks/hooks.json >/dev/null
           echo "JSON valid"
 
       - name: Smoke test (install into synthetic client repo)
