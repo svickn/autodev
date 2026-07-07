@@ -66,8 +66,8 @@ Read `.autodev/deployment.json` for: tracker states/labels, BrainGrid project,
 5. **Sizing.** Prefer small, single-purpose stories so reviews/QA stay tractable
    (guideline, not a hard line-count gate).
 
-6. **Create the feature branch** ``repo.feature_branch_prefix`<feature-slug>` from
-   ``repo.default_branch``. **Establish the WIP backup (if `backup.enabled` AND delivery
+6. **Create the feature branch** `repo.feature_branch_prefix`<feature-slug>` from
+   `repo.default_branch`. **Establish the WIP backup (if `backup.enabled` AND delivery
    is `draft_pr`):** push the just-created feature branch to `backup.remote` (default
    `origin`) — `git push <remote> `repo.feature_branch_prefix`<feature-slug>` — so the branch
    exists remotely from the start and every later task push has somewhere to land.
