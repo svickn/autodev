@@ -126,7 +126,7 @@ Then commit to the story branch (`[sc-<id>]` in the message), **deliver per the
 Delivery mode** (`reference/manual.md`: `draft_pr` → open/update a draft PR, and **on first open
 attach its URL to the story** — `tracker.mjs attach <issue> <pr-url> --title "draft
 PR"`; `local_diff` → keep local, no push/PR), and `move <issue> ai_qa --note "✅ Dev
-done — <what was built> · files <…> · tests <…> · `commands.test` ✓ · lint ✓ · build ✓ ·
+done — <what was built> · files <…> · tests <…> · commands.test ✓ · lint ✓ · build ✓ ·
 delivery: <PR url | local diff cmd>"` — the review artifact must be named so the
 operator can find it.
 
