@@ -1,0 +1,106 @@
+# merge-verify — prove it works AFTER the merge, not just on the story branch
+
+> Read inline from `reference/devloop.md` after every squash-merge, and from
+> `/autodev:loop`'s feature close-out step. Not independently invokable.
+
+A story branch passing in isolation is NOT proof the *integrated* result works.
+This is the engine's answer to classic "it worked on my local." Invoked by
+`/autodev:loop` after a squash-merge into the feature branch, and as the gate around
+the human merge to `repo.default_branch`.
+
+## 1 · Clean-room integration check (after a merge into the feature branch)
+- **Hermetic (B3 · SAFETY)** — export `qa.hermetic.env` first; the clean-room run
+  (incl. the live smoke) must NEVER hit production services/creds.
+- **Fresh state** — a clean checkout/worktree of the merged feature branch, NOT
+  the dev's warm tree (`git clean -fdx` equivalent / separate worktree).
+- **Clean install from the lockfile** — `commands.install` (e.g. `npm ci`). Never
+  reuse cached `node_modules`; this is what catches missing deps / lockfile drift.
+- **Full gates on the integrated result** — run via the configured `qa.test_layers.*`
+  (+ `qa.docker_up` / `qa.seed_test` prep) rather than a bare `commands.test`, so the
+  required exclusions/concurrency/seed are applied; plus `commands.lint` · `commands.build`
+  · the e2e suite in `qa.e2e_dir/`. Judge against any `qa._known_baseline`.
+- **Live smoke** — start the app (`commands.app_run` → `commands.app_url`) and exercise
+  the feature's critical path live (evidence-collector / Playwright); attach
+  screenshots.
+- **CI parity** — `draft_pr`: confirm CI green on the merge commit. `local_diff`:
+  there is no remote CI — the local gates above ARE the parity check.
+
+**Outcomes (log both — every action leaves a Linear trail, principle 9):**
+- All green → 🗒️ comment `🧪 clean-room ✓ — fresh install + full gates + live smoke
+  green on <feature branch>@<sha>` on the story/feature; continue.
+- **Any failure** = an integration regression the isolated branch hid → **auto-revert
+  that merge** (`git revert` the squash commit on the feature branch; `draft_pr` pushes
+  the revert — 🗒️ log `↩️ reverted [sc-<id>] from <feature branch>` — `local_diff` keeps
+  it local), then **`move <issue> ai_development --note "🧪 clean-room FAIL — <the
+  integration regression>; reverted [sc-<id>], back to dev"`** (localize via the
+  `[sc-<id>]` trailer), and re-enter the dev↔QA loop. **Never leave a broken shared
+  branch — and never revert without logging it.**
+
+## 2 · Feature acceptance QA + report (before the human gate)  ⟵ B1
+When the feature is assembled and §1 is green, run a **whole-feature acceptance
+pass** — this is the integrated check the per-story gates can't give you (it catches
+cross-suite flakiness + verifies the system *as a whole*). Hermetic, on the
+assembled branch:
+- **Integrated suites** — run `qa.acceptance.integrated_suites` (the full
+  cross-suite run on the whole branch, e.g. all backend + UI + e2e together), not
+  just the per-story layers. Judge against `qa._known_baseline`.
+- **Live system smoke** — if `qa.acceptance.live_system`, start the assembled app
+  (`commands.app_run` → `commands.app_url`) and drive an **end-to-end path across the
+  whole feature** (multiple stories together, not one in isolation) via
+  evidence-collector / Playwright; attach screenshots.
+- A real failure here → localize to a story (`[sc-<id>]` trail), back to
+  `ai_development`, re-QA — same as §1. Don't present a feature that fails integrated.
+
+Then generate the **acceptance package** (post on the feature issue / Project) —
+**detailed but to-the-point; the TEST CHECKLIST leads, evidence follows:**
+1. **🖥️ Where:** the preview URL (below) — server already running — and the **code
+   links**: the feature branch on GitHub (and the feature PR once it exists), also
+   attached to the ticket via `tracker.mjs attach` so they're one click from the card.
+2. **✅ Test checklist** — one numbered item per acceptance-worthy behavior, each a
+   single line: **do X → at `<URL path / screen>` → expect Y**. Cover every story's
+   critical path + the cross-story flows; minutes to run, not an afternoon. This is
+   the operator's actual to-do list — write it for a human with 10 minutes.
+3. **⚠️ Flags to eyeball:** anything advisory-flagged (live check, visual ⚠, known
+   baseline) — one line each with where to look.
+4. **Evidence (collapsed/after the fold):** stories shipped + QA verdicts ·
+   integrated-suite result · live-system screenshots · CI status.
+
+**Preview environment (if `preview.enabled`) — the human accepts a RUNNING PRODUCT,
+not a diff.** Start the assembled feature-branch app (`preview.command`, default
+`commands.app_run`; **hermetic env applied** — a preview must never touch prod
+services) and include in the acceptance comment: the **URL** (`preview.url`, default
+`commands.app_url`) and the **exact relaunch one-liner** (`git checkout
+repo.feature_branch_prefix<slug> && <command>` → URL). Ticks are stateless, so the engine's
+instance may not outlive the session — the posted command is the durable path; the
+running instance is a courtesy. 🗒️ `🖥️ preview up · <url> · relaunch: <cmd>`.
+
+Then **`move <feature> ready_for_human_acceptance --note "🚦 Feature acceptance —
+integrated suites ✓ · live smoke ✓ · report + preview posted; awaiting human
+sign-off"`** (project mode: the equivalent `acceptance` project-status move).
+**Stop — human decision.**
+
+## 3 · Ship to `repo.default_branch` + sign-off (humans only) — per Delivery mode
+- **`draft_pr`:** open the feature PR if not already open and **attach its URL to the
+  feature** (`tracker.mjs attach <feature> <pr-url> --title "feature PR"`); only a
+  **human** merges it to `repo.default_branch` —
+  branch protection enforces this; the bot never can. After it deploys, run a
+  **post-deploy smoke** against the REAL environment (the deployed URL, not
+  localhost), regenerate the report; **final prod sign-off is the human's**. If the
+  post-deploy smoke fails, raise it immediately — **`move <feature> blocked --note "🛑
+  post-deploy smoke FAILED on <real env> — <evidence>"`**.
+- **`local_diff`:** nothing is pushed/deployed. The engine presents the assembled
+  **local** feature-branch diff + the acceptance package; the human reviews and either
+  merges locally themselves, or says **"approve and merge"** — then the engine executes
+  the local merge (the decision is the gate; log the audit comment; never push). There
+  is no remote prod step — sign-off is on the local run.
+
+## Guardrails
+- Clean install (`npm ci`-equivalent, no warm cache) is non-negotiable — it's the
+  whole point of this skill.
+- A **revert** is always preferable to a broken shared branch.
+- Per **Delivery mode**: `draft_pr` → the bot pushes `repo.feature_branch_prefix*` /
+  `repo.story_branch_prefix/*` and may squash story→feature, but NEVER merges into
+  `repo.default_branch` (needs bot git identity + branch protection). `local_diff` →
+  the bot pushes **nothing** (enforced by the plugin's `PreToolUse` push-guard
+  hook); it squashes
+  story→feature **locally** and never merges `repo.default_branch`.
