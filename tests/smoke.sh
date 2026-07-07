@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
-# autoDev smoke test — installs the engine into a synthetic client repo and asserts the
-# contracts that have bitten us in real deployments. Run locally or in CI: tests/smoke.sh
+# autoDev smoke test — exercises the plugin's scripts and hooks directly against a
+# synthetic client repo, asserting the contracts that have bitten us in real
+# deployments. No Claude invocation (the commands themselves are prose, interpreted
+# by Claude at runtime — not something a shell script can drive). Run: tests/smoke.sh
 set -uo pipefail
-ENGINE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+PLUGIN="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 FAIL=0
 pass() { printf '  \033[32m✓\033[0m %s\n' "$1"; }
 fail() { printf '  \033[31m✗\033[0m %s\n' "$1"; FAIL=1; }
@@ -11,8 +13,8 @@ check() { # <desc> <cmd...>
   if "$@" >/dev/null 2>&1; then pass "$d"; else fail "$d"; fi
 }
 
-# ---- synthetic client repo: team docs + foreign settings + team hook + MUI/codegen ----
-TGT=$(mktemp -d); trap 'rm -rf "$TGT" "$CFG"' EXIT
+# ---- synthetic client repo: team docs + foreign settings + a pre-existing git hook + MUI/codegen ----
+TGT=$(mktemp -d); trap 'rm -rf "$TGT"' EXIT
 git -C "$TGT" init -q
 printf '# Team conventions\n- Commit directly to main for hotfixes.\n- Use the MUI theme.\n' > "$TGT/AGENTS.md"
 mkdir -p "$TGT/.claude"; echo 'team rules' > "$TGT/.claude/CLAUDE.md"
@@ -21,48 +23,59 @@ mkdir -p "$TGT/.git/hooks"; printf '#!/bin/sh\nexit 0\n' > "$TGT/.git/hooks/pre-
 echo '{"dependencies":{"react":"18","@mui/material":"5"},"devDependencies":{"@graphql-codegen/cli":"5"}}' > "$TGT/package.json"
 echo '{}' > "$TGT/tsconfig.json"; touch "$TGT/codegen.ts"
 
-CFG=$(mktemp).json
-jq '.client_name="SmokeCo" | .repo.local_path=$p' --arg p "$TGT" "$ENGINE/config/deployment.example.json" > "$CFG"
+# Simulates what /autodev:init would have written — there's no shell entry point for
+# the actual command (it's prose, interpreted by Claude), so this test starts from
+# its output instead of driving it.
+mkdir -p "$TGT/.autodev"
+jq '.client_name="SmokeCo" | .repo.local_path=$p | .tracker.kind="local"' \
+  --arg p "$TGT" "$PLUGIN/reference/deployment.example.json" > "$TGT/.autodev/deployment.json"
 
-echo "install:"
-if OUT=$(bash "$ENGINE/install.sh" "$CFG" 2>&1); then pass "install.sh exits 0"; else fail "install.sh exits 0"; echo "$OUT" | tail -5; fi
-
-echo "render:"
-check "autodev.md installed" test -f "$TGT/.claude/autodev.md"
-check "no unrendered placeholders" bash -c "! grep -rl '{{' '$TGT/.claude' '$TGT/scripts/autodev'"
-check "engine version stamped" jq -e '.engine.version and .engine.sha' "$TGT/.autodev/deployment.json"
-
-echo "preservation (the AGENTS.md incident):"
+echo "footprint (the whole point of the plugin conversion):"
+check "no .claude/skills written" bash -c "! test -d '$TGT/.claude/skills'"
+check "no .claude/autodev.md written" bash -c "! test -f '$TGT/.claude/autodev.md'"
+check "no scripts/autodev written" bash -c "! test -d '$TGT/scripts'"
+check "team .claude/settings.json untouched" grep -q "Bash(ls" "$TGT/.claude/settings.json"
 check "team AGENTS.md untouched" grep -q "Use the MUI theme" "$TGT/AGENTS.md"
 check "team .claude/CLAUDE.md untouched" grep -q "team rules" "$TGT/.claude/CLAUDE.md"
-check "foreign settings backed up" grep -q "Bash(ls" "$TGT/.claude/settings.json.pre-autodev"
-check "autoDev settings written" grep -q "autoDev headless" "$TGT/.claude/settings.json"
-check "team pre-push hook chained" test -x "$TGT/.git/hooks/pre-push.pre-autodev"
-check "AGENTS.md deny present" grep -q '"Edit(AGENTS.md)"' "$TGT/.claude/settings.json"
+check "pre-existing .git/hooks/pre-push untouched" grep -q "exit 0" "$TGT/.git/hooks/pre-push"
+check "no {{ left unrendered in the plugin itself" bash -c \
+  "! grep -rl '{{' '$PLUGIN/commands' '$PLUGIN/reference' '$PLUGIN/hooks' '$PLUGIN/scripts' 2>/dev/null"
 
 echo "conventions:"
+bash "$PLUGIN/scripts/detect-conventions.sh" "$TGT" > "$TGT/.autodev/conventions.md"
 check "codegen rule detected" grep -q "GraphQL code generation" "$TGT/.autodev/conventions.md"
 check "MUI theme rule detected" grep -q "Material UI" "$TGT/.autodev/conventions.md"
 check "comment rule present" grep -q "explain WHY" "$TGT/.autodev/conventions.md"
 
-echo "session hook:"
-check "emits valid JSON with the manual + Marj" bash -c \
-  "CLAUDE_PROJECT_DIR='$TGT' bash '$TGT/scripts/autodev/session-init.sh' | jq -e '.hookSpecificOutput.additionalContext | contains(\"Marj\") and contains(\"operating manual\")'"
-
-echo "pre-push guard (engine-only enforcement):"
-REFS_FEAT="refs/heads/f a refs/heads/feature/x b"; REFS_MAIN="refs/heads/m a refs/heads/main b"
-check "agent+draft_pr: feature push allowed" bash -c "cd '$TGT' && echo '$REFS_FEAT' | CLAUDECODE=1 .git/hooks/pre-push origin u"
-check "agent+draft_pr: main push blocked"    bash -c "cd '$TGT' && ! (echo '$REFS_MAIN' | CLAUDECODE=1 .git/hooks/pre-push origin u)"
-jq '.review.delivery="local_diff"' "$TGT/.autodev/deployment.json" > "$TGT/.autodev/t" && mv "$TGT/.autodev/t" "$TGT/.autodev/deployment.json"
-check "agent+local_diff: all pushes blocked" bash -c "cd '$TGT' && ! (echo '$REFS_FEAT' | CLAUDECODE=1 .git/hooks/pre-push origin u)"
-check "human: never blocked"                 bash -c "cd '$TGT' && echo '$REFS_MAIN' | env -u CLAUDECODE .git/hooks/pre-push origin u"
-
 echo "docs conflict scan:"
-check "flags 'commit directly to main'" bash -c "bash '$TGT/scripts/autodev/check-docs.sh' '$TGT' | grep -q 'only humans merge'"
+check "flags 'commit directly to main'" bash -c "bash '$PLUGIN/scripts/check-docs.sh' '$TGT' | grep -q 'only humans merge'"
+
+echo "session-signal hook (one line, only when configured):"
+check "emits a short line naming both commands" bash -c \
+  "echo '{\"cwd\":\"$TGT\"}' | '$PLUGIN/hooks/session-signal.sh' | jq -e '.hookSpecificOutput.additionalContext | contains(\"/autodev:loop\") and contains(\"/autodev:new\") and (length < 200)'"
+UNCONF=$(mktemp -d)
+check "silent when unconfigured" bash -c \
+  "test -z \"\$(echo '{\"cwd\":\"$UNCONF\"}' | '$PLUGIN/hooks/session-signal.sh')\""
+rmdir "$UNCONF"
+
+echo "push guard (PreToolUse — replaces .git/hooks/pre-push):"
+check "feature branch push allowed" bash -c \
+  "echo '{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git push origin feature/x\"},\"cwd\":\"$TGT\"}' | '$PLUGIN/hooks/guard-push.sh' | wc -c | tr -d '[:space:]' | grep -qx 0"
+check "main branch push denied" bash -c \
+  "echo '{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git push origin main\"},\"cwd\":\"$TGT\"}' | '$PLUGIN/hooks/guard-push.sh' | jq -e '.hookSpecificOutput.permissionDecision == \"deny\"'"
+jq '.review.delivery="local_diff"' "$TGT/.autodev/deployment.json" > "$TGT/.autodev/t" && mv "$TGT/.autodev/t" "$TGT/.autodev/deployment.json"
+check "local_diff: even a feature push is denied" bash -c \
+  "echo '{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git push origin feature/x\"},\"cwd\":\"$TGT\"}' | '$PLUGIN/hooks/guard-push.sh' | jq -e '.hookSpecificOutput.permissionDecision == \"deny\"'"
+jq '.review.delivery="draft_pr"' "$TGT/.autodev/deployment.json" > "$TGT/.autodev/t" && mv "$TGT/.autodev/t" "$TGT/.autodev/deployment.json"
+
+echo "docs guard (PreToolUse — replaces the settings.json deny rule):"
+check "Edit on AGENTS.md denied" bash -c \
+  "echo '{\"tool_name\":\"Edit\",\"tool_input\":{\"file_path\":\"$TGT/AGENTS.md\"}}' | '$PLUGIN/hooks/guard-docs.sh' | jq -e '.hookSpecificOutput.permissionDecision == \"deny\"'"
+check "Edit elsewhere allowed" bash -c \
+  "echo '{\"tool_name\":\"Edit\",\"tool_input\":{\"file_path\":\"$TGT/src/foo.ts\"}}' | '$PLUGIN/hooks/guard-docs.sh' | wc -c | tr -d '[:space:]' | grep -qx 0"
 
 echo "local tracker (git-native board):"
-jq '.tracker.kind="local"' "$TGT/.autodev/deployment.json" > "$TGT/.autodev/t" && mv "$TGT/.autodev/t" "$TGT/.autodev/deployment.json"
-TRK="$TGT/scripts/autodev/tracker.mjs"
+TRK="$PLUGIN/scripts/tracker.mjs"
 LID=$(cd "$TGT" && node "$TRK" create-issue --title "Smoke story" --stage ready_for_ai_dev --labels ai-eligible 2>/dev/null)
 check "create-issue returns an id" test -n "$LID"
 check "move + note" bash -c "cd '$TGT' && node '$TRK' move '$LID' ai_development --note 'dev started' | grep -q 'AI Development'"
