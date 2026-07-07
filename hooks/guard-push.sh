@@ -1,9 +1,14 @@
 #!/usr/bin/env bash
 # autoDev — push guard (PreToolUse hook). Blocks a Bash `git push` of the default
-# branch, and blocks ALL pushes when review.delivery=local_diff — mirroring the old
-# .git/hooks/pre-push guard without ever touching the repo's own git config. Reads
-# .autodev/deployment.json from the tool call's cwd; fails open (allows) if autoDev
-# isn't configured there. Only guards pushes made through Claude Code — a human's own
+# branch, blanket push forms (--all/--mirror/--tags), ambiguous unqualified pushes
+# (bare `git push` / `git push <remote>` with no ref, `git push ... HEAD`), and ALL
+# pushes when review.delivery=local_diff — mirroring the old .git/hooks/pre-push
+# guard without ever touching the repo's own git config. Reads
+# .autodev/deployment.json from the tool call's cwd; fails open (allows) only when
+# autoDev isn't configured in this repo at all (no .autodev/deployment.json) — a
+# PRESENT but malformed config fails CLOSED (denies) instead, since silently
+# allowing a push because the guard couldn't read its own rules would defeat the
+# guard's purpose. Only guards pushes made through Claude Code — a human's own
 # terminal is never affected (there is no hook installed outside this plugin).
 set -uo pipefail
 
@@ -18,19 +23,40 @@ CONFIG="$CWD/.autodev/deployment.json"
 [[ -f "$CONFIG" ]] || exit 0
 command -v jq >/dev/null 2>&1 || exit 0
 
-DEFAULT_BRANCH=$(jq -r '.repo.default_branch // "main"' "$CONFIG")
-DELIVERY=$(jq -r '.review.delivery // "draft_pr"' "$CONFIG")
-
 deny() {
   jq -n --arg r "$1" '{hookSpecificOutput: {hookEventName: "PreToolUse", permissionDecision: "deny", permissionDecisionReason: $r}}'
   exit 0
 }
 
+# A present-but-broken config must not silently fail the guard open.
+jq empty "$CONFIG" 2>/dev/null || deny "autoDev: .autodev/deployment.json exists but is not valid JSON — fix it before pushing (the push guard can't safely evaluate review.delivery/default_branch)."
+
+DEFAULT_BRANCH=$(jq -r '.repo.default_branch // "main"' "$CONFIG")
+DELIVERY=$(jq -r '.review.delivery // "draft_pr"' "$CONFIG")
+
 if [[ "$DELIVERY" == "local_diff" ]]; then
   deny "autoDev: review.delivery=local_diff (LOCAL-ONLY mode) — never push; present a local diff instead (reference/manual.md ▸ Delivery mode)."
 fi
 
-if echo "$CMD" | grep -qE "(refs/heads/${DEFAULT_BRANCH}\b|[[:space:]:]${DEFAULT_BRANCH}([[:space:]:]|\$))"; then
+# Blanket push forms are never legitimate from the engine.
+if echo "$CMD" | grep -qE '(^|;|&&|\|)\s*git\s+push\b.*(--all|--mirror|--tags)\b'; then
+  deny "autoDev: only humans merge '${DEFAULT_BRANCH}' (Gate 2 + branch protection) — a blanket push (--all/--mirror/--tags) is never allowed from the engine."
+fi
+
+# Pushing HEAD, or a bare `git push`/`git push <remote>` with no ref at all, pushes
+# whatever the current branch happens to be — ambiguous without resolving repo
+# state, and the engine always names an explicit feature/story branch anyway.
+if echo "$CMD" | grep -qE '(^|;|&&|\|)\s*git\s+push\b.*[[:space:]:]HEAD([[:space:]:]|$)'; then
+  deny "autoDev: only humans merge '${DEFAULT_BRANCH}' (Gate 2 + branch protection) — pushing HEAD is ambiguous; push an explicit feature/story branch instead."
+fi
+if echo "$CMD" | grep -qE '(^|;|&&|\|)[[:space:]]*git[[:space:]]+push([[:space:]]+[a-zA-Z0-9_.-]+)?[[:space:]]*($|;|&&|\|)'; then
+  deny "autoDev: only humans merge '${DEFAULT_BRANCH}' (Gate 2 + branch protection) — a bare push with no explicit branch is ambiguous; push an explicit feature/story branch instead."
+fi
+
+# Harmonized boundary (both alternatives use the SAME whitespace/colon/EOL
+# boundary — a bare \b would treat "-"/"." as boundaries and false-match
+# "main-feature"/"main.bak" against a default branch named "main").
+if echo "$CMD" | grep -qE "(refs/heads/${DEFAULT_BRANCH}([[:space:]:]|\$)|[[:space:]:]${DEFAULT_BRANCH}([[:space:]:]|\$))"; then
   deny "autoDev: only humans merge '${DEFAULT_BRANCH}' (Gate 2 + branch protection) — the engine never pushes it."
 fi
 
