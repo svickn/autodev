@@ -49,8 +49,22 @@ fi
 if echo "$CMD" | grep -qE '(^|;|&&|\|)\s*git\s+push\b.*[[:space:]:]HEAD([[:space:]:]|$)'; then
   deny "autoDev: only humans merge '${DEFAULT_BRANCH}' (Gate 2 + branch protection) — pushing HEAD is ambiguous; push an explicit feature/story branch instead."
 fi
-if echo "$CMD" | grep -qE '(^|;|&&|\|)[[:space:]]*git[[:space:]]+push([[:space:]]+[a-zA-Z0-9_.-]+)?[[:space:]]*($|;|&&|\|)'; then
-  deny "autoDev: only humans merge '${DEFAULT_BRANCH}' (Gate 2 + branch protection) — a bare push with no explicit branch is ambiguous; push an explicit feature/story branch instead."
+# A bare `git push`, or one with only flags before the remote (e.g. `-u origin`,
+# `--force-with-lease origin`), pushes whatever the current branch happens to be —
+# ambiguous without resolving repo state. Tokenize rather than regex-match here:
+# an arbitrary run of dash-flags before the remote defeats a fixed-shape regex.
+PUSH_TAIL=$(echo "$CMD" | grep -oE '(^|;|&&|\|)[[:space:]]*git[[:space:]]+push[^;&|]*' | sed -E 's/^.*git[[:space:]]+push//')
+if [[ -n "$PUSH_TAIL" || "$CMD" == *"git push"* ]]; then
+  NONFLAG_COUNT=0
+  for tok in $PUSH_TAIL; do
+    case "$tok" in
+      -*) ;;                          # a flag — skip (errs toward "ambiguous" if it's actually a flag's value, which is the safe direction)
+      *) NONFLAG_COUNT=$((NONFLAG_COUNT + 1)) ;;
+    esac
+  done
+  if [[ "$NONFLAG_COUNT" -le 1 ]]; then
+    deny "autoDev: only humans merge '${DEFAULT_BRANCH}' (Gate 2 + branch protection) — a push with no explicit branch named is ambiguous; push an explicit feature/story branch instead."
+  fi
 fi
 
 # Harmonized boundary (both alternatives use the SAME whitespace/colon/EOL
