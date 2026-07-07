@@ -1,6 +1,6 @@
-# Linear setup for {{CLIENT_NAME}}
+# Linear setup for <your deployment's client_name>
 
-Use the **client's own** Linear workspace/team (`{{LINEAR_TEAM}}`). Never a
+Use the **client's own** Linear workspace/team (`<your Linear team name>`). Never a
 different workspace.
 
 ## Hierarchy mapping
@@ -101,9 +101,9 @@ then on the runner host:
 
 ```bash
 mkdir -p ~/.config/autodev
-printf '%s' '<LINEAR_API_KEY>' > ~/.config/autodev/{{CLIENT_NAME}}.linear.token
-chmod 600 ~/.config/autodev/{{CLIENT_NAME}}.linear.token
-export LINEAR_API_TOKEN="$(cat ~/.config/autodev/{{CLIENT_NAME}}.linear.token)"
+printf '%s' '<LINEAR_API_KEY>' > ~/.config/autodev/<your deployment's client_name>.linear.token
+chmod 600 ~/.config/autodev/<your deployment's client_name>.linear.token
+export LINEAR_API_TOKEN="$(cat ~/.config/autodev/<your deployment's client_name>.linear.token)"
 export LINEAR_TEAM_ID="<team-uuid>"   # used by notify.sh
 ```
 
