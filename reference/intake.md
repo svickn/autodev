@@ -1,14 +1,8 @@
----
-name: intake
-description: >
-  The front door for new work on {{CLIENT_NAME}}. Use whenever the operator wants
-  to add a feature, fix, or idea to the roadmap — e.g. "we need to add X", "new
-  idea for the roadmap", "here's a brief for Y". Routes the request, interviews
-  for anything missing, and creates the Linear feature-request issue. The ONLY way work
-  enters the engine.
----
-
 # Intake — the only entry point
+
+> Read by `/autodev:new`, the only way work enters the engine — never auto-triggered
+> by conversation. Routes the request, interviews for anything missing, and creates
+> the feature-request issue.
 
 New work enters here and nowhere else. The default input stack is **BrainGrid**
 (spec authoring) + **Linear** (tracking + state).
@@ -99,34 +93,36 @@ The steps below are identical in both modes — only the *medium* differs
    - **Gaps & assumptions** (only ones that would change what gets built — each as
      a specific question or a stated assumption to confirm; zero is a fine answer).
    - **The ask:** "approve to build, answer the gaps, or correct me."
-   One operator `approve` = **Gate 1**. Skip `/prd` authoring (their document IS
-   the PRD — file it as such); on approval go straight to `/breakdown`. Ask-don't-
-   invent still applies: a PRD too thin for testable criteria gets its gaps listed
-   in the package, not silently guessed.
+   One operator `approve` = **Gate 1**. Skip PRD authoring (their document IS
+   the PRD — file it as such); on approval the next `/autodev:loop` goes straight
+   to breakdown (`reference/breakdown.md`). Ask-don't-invent still applies: a PRD
+   too thin for testable criteria gets its gaps listed in the package, not
+   silently guessed.
 
 3. **Write the brief** to `specs/<feature-slug>/brief.md` in the repo and commit
-   it (on a working branch, not `{{DEFAULT_BRANCH}}`).
+   it (on a working branch, not `repo.default_branch`).
    - **Wireframes/designs (C1):** if the request includes mockups/wireframes,
      **preserve them visually** — save the image files under
      `specs/<feature-slug>/design/` and **attach them to the feature ticket** with
-     `node scripts/autodev/tracker.mjs attach <issue> <url> --title "<name>"` (a
+     `node ${CLAUDE_PLUGIN_ROOT}/scripts/tracker.mjs attach <issue> <url> --title "<name>"` (a
      Figma/hosted URL; for local images, host or link them). Never reduce a design
      to a text summary; downstream dev + manual QA (C2) need the actual visuals.
 
 4. **Create the feature** (per `tracker.hierarchy` — see autodev.md):
    - **`issue` (default):** create a **feature ISSUE** in `New Request` (team
-     `{{LINEAR_TEAM}}`), titled from the feature, linked to the brief, labeled
+     `tracker.team`), titled from the feature, linked to the brief, labeled
      `route:feature` **+ `tracker.instance_label`** (every issue this engine creates
      carries its instance tag — principle 10 ownership on shared boards). It carries the feature through the front half (New Request →
-     Clarifying (H) → PRD Review (H)); at `/breakdown` a Project + Milestones are
-     added to group its stories.
+     Clarifying (H) → PRD Review (H)); at `/autodev:loop`'s breakdown stage a
+     Project + Milestones are added to group its stories.
    - **`project` (opt-in):** create a **Linear Project** (the feature) and set its
      project-status to `new_request` (`tracker.mjs set-project-status`). The gates
-     ride project statuses; stories are created at `/breakdown`.
+     ride project statuses; stories are created at `/autodev:loop`'s breakdown stage.
 
 5. **Hand off.** Tell the operator the brief is captured and offer to draft the
-   PRD next (the `/prd` skill turns this into a BrainGrid Requirement for their
-   Gate 1 approval). Do not proceed past intake without the operator.
+   PRD next (running `/autodev:loop` turns this into a BrainGrid Requirement for
+   their Gate 1 approval, per `reference/prd.md`). Do not proceed past intake
+   without the operator.
 
 ## Guardrails
 
@@ -134,6 +130,7 @@ The steps below are identical in both modes — only the *medium* differs
   names from the operator.
 - Do not create stories, branches, projects, milestones, or BrainGrid tasks here
   — intake only produces the brief + the feature-request issue. The full
-  hierarchy comes at `/breakdown`, after the PRD is approved at Gate 1.
+  hierarchy comes from `/autodev:loop`'s breakdown stage, after the PRD is
+  approved at Gate 1.
 - Confidentiality: keep this client's context separate; never reference other
   clients' work.
