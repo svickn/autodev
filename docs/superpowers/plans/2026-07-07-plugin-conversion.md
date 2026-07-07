@@ -1717,7 +1717,8 @@ git commit -m "feat(plugin): replace SessionStart manual-injection + .git/hooks/
 The old version had `{{TICK_MIN}}`, `{{RUN_HOME}}`, `{{REPO_PATH}}` baked in by `install.sh` and assumed a pre-approved `settings.json`. The new version takes the repo path as an argument, reads `runner.home_dir` from that repo's own config, and builds a `--allowedTools` list for the headless `claude -p` call instead of relying on any written permissions.
 
 **Files:**
-- Create: `scripts/devloop-tick.sh` (replaces `template/scripts/devloop-tick.sh`, deleted in Task 20)
+- Create: `scripts/devloop-tick.sh`
+- Delete: `template/scripts/devloop-tick.sh` (superseded, not ported — different CLI contract)
 
 **Interfaces:**
 - Consumes: `.autodev/deployment.json` (`runner.home_dir`, `commands.*`, `repo.*`, `backup.remote`) from the repo passed as `$1`. Calls `scripts/notify.sh` (Task 18), `scripts/report.mjs` (Task 2), `scripts/tracker.mjs` (Task 2) via `$(dirname "$0")` — all must live in the same directory at runtime (see Global Constraints).
@@ -1830,12 +1831,22 @@ rm -rf "$TGT"
 
 Expected: `syntax check: 0` (this only checks the script parses — a full end-to-end run needs a real `claude` invocation and is exercised manually in Task 23, not in CI).
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 4: Remove the superseded template version (it's replaced, not ported — the new file has a different CLI contract)**
+
+```bash
+cd /Users/svickn/working/autodev
+git rm template/scripts/devloop-tick.sh
+```
+
+- [ ] **Step 5: Commit**
 
 ```bash
 cd /Users/svickn/working/autodev
 git add scripts/devloop-tick.sh
-git commit -m "feat(plugin): rewrite devloop-tick.sh — repo-path arg, config-driven --allowedTools"
+git commit -m "feat(plugin): rewrite devloop-tick.sh — repo-path arg, config-driven --allowedTools
+
+Removes template/scripts/devloop-tick.sh (superseded, not ported — the old
+version had {{RUN_HOME}}/{{REPO_PATH}}/{{TICK_MIN}} baked in by install.sh)."
 ```
 
 ---
@@ -1845,8 +1856,9 @@ git commit -m "feat(plugin): rewrite devloop-tick.sh — repo-path arg, config-d
 The old `notify.sh` computed its config path from its own script location (`$HERE/../../.autodev/deployment.json`), assuming it was copied two directories under the repo root. That assumption breaks once it lives at a stable per-operator path unrelated to any repo. Both scripts now take `<repo-path>` as their first argument.
 
 **Files:**
-- Create: `scripts/notify.sh` (replaces `template/scripts/notify.sh`, deleted in Task 20)
-- Create: `scripts/watchdog.sh` (replaces `template/scripts/watchdog.sh`, deleted in Task 20)
+- Create: `scripts/notify.sh`
+- Create: `scripts/watchdog.sh`
+- Delete: `template/scripts/notify.sh`, `template/scripts/watchdog.sh` (superseded, not ported — different CLI contract)
 
 **Interfaces:**
 - `notify.sh <repo-path> {limited <epoch>|resumed|stalled <age>}` — calls `tracker.mjs` (Task 2) via `$(dirname "$0")`.
@@ -1987,12 +1999,22 @@ rm -rf "$TGT" "$RH"
 
 Expected: `exit: 0`, no output (no heartbeat file yet → "never started" no-op path).
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 6: Remove the superseded template versions (replaced, not ported — different CLI contract)**
+
+```bash
+cd /Users/svickn/working/autodev
+git rm template/scripts/notify.sh template/scripts/watchdog.sh
+```
+
+- [ ] **Step 7: Commit**
 
 ```bash
 cd /Users/svickn/working/autodev
 git add scripts/notify.sh scripts/watchdog.sh
-git commit -m "feat(plugin): rewrite notify.sh and watchdog.sh to take <repo-path> instead of a baked-in path"
+git commit -m "feat(plugin): rewrite notify.sh and watchdog.sh to take <repo-path> instead of a baked-in path
+
+Removes template/scripts/notify.sh and template/scripts/watchdog.sh (superseded,
+not ported)."
 ```
 
 ---
@@ -2161,7 +2183,7 @@ git commit -m "feat(plugin): port ops/ docs, add launchd-timer.md for the opt-in
 - [ ] **Step 1: Confirm `template/` is empty of tracked files before deleting**
 
 Run: `git -C /Users/svickn/working/autodev ls-files template/`
-Expected: no output (everything under `template/` was moved by Tasks 2–10, 16, 19; `session-init.sh` and `pre-push.sh` were `git rm`'d directly in Task 16).
+Expected: no output (everything under `template/` was moved by Tasks 2–10, 19; `session-init.sh` and `pre-push.sh` were `git rm`'d in Task 16; `devloop-tick.sh`, `notify.sh`, and `watchdog.sh` were `git rm`'d in Tasks 17–18).
 
 - [ ] **Step 2: Delete `install.sh` and the (now-empty) `template/` directory**
 
