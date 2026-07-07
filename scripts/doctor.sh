@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # autoDev — preflight. Fail fast on setup mistakes BEFORE a run.
 # Client-agnostic: reads .autodev/deployment.json. Run from anywhere in the repo.
+# Invoked by /autodev:init and available any time as ${CLAUDE_PLUGIN_ROOT}/scripts/doctor.sh.
 set -uo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -23,24 +24,6 @@ for t in node git gh claude; do
   command -v "$t" >/dev/null && ok "$t" || bad "$t missing"
 done
 command -v braingrid >/dev/null && ok "braingrid" || warn "braingrid missing — engine will use the agent PRD/breakdown fallback"
-
-echo "engine version:"
-INST_V=$(jq -r '.engine.version // "unstamped"' "$CONFIG")
-INST_SHA=$(jq -r '.engine.sha // "?"' "$CONFIG")
-ENG_DIR=$(jq -r '.engine.engine_dir // ""' "$CONFIG")
-if [[ "$INST_V" == "unstamped" ]]; then
-  warn "install is unstamped (pre-1.1.0 engine) — re-run install.sh to upgrade + stamp"
-elif [[ -n "$ENG_DIR" && -f "$ENG_DIR/VERSION" ]]; then
-  CUR_V=$(cat "$ENG_DIR/VERSION")
-  CUR_SHA=$(git -C "$ENG_DIR" rev-parse --short HEAD 2>/dev/null || echo "?")
-  if [[ "$CUR_V" == "$INST_V" && "$CUR_SHA" == "$INST_SHA" ]]; then
-    ok "current ($INST_V @ $INST_SHA)"
-  else
-    warn "STALE install: this repo has $INST_V @ $INST_SHA, engine repo is $CUR_V @ $CUR_SHA — re-run: $ENG_DIR/install.sh (or --all)"
-  fi
-else
-  ok "installed $INST_V @ $INST_SHA (engine repo not reachable to compare)"
-fi
 
 echo "repo:"
 REPO=$(jq -r '.repo.local_path' "$CONFIG")
