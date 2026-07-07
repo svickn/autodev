@@ -3,10 +3,10 @@
 # autoDev — convention auto-detector. Scans the TARGET repo for the house patterns
 # a fresh-context dev agent would otherwise reinvent (generated types, design
 # system/theme, data layer, testing) and emits a prescriptive markdown report.
-# install.sh runs this and writes the result to .autodev/conventions.md, which the
-# SessionStart hook injects (and autodev.md references) — so the dev persona inherits
-# "use the generated types, use the theme" as BINDING context instead of hand-rolling
-# types and hardcoding styles. The team's own AGENTS.md/CLAUDE.md still wins on conflict.
+# /autodev:new and /autodev:loop run this and cache the result at .autodev/conventions.md,
+# reading it explicitly at the top of each run (reference/manual.md references it) — so the
+# dev persona inherits "use the generated types, use the theme" as BINDING context instead
+# of hand-rolling types and hardcoding styles. The team's own AGENTS.md/CLAUDE.md still wins.
 #
 # Read-only on the repo. Usage: detect-conventions.sh <repo_path>
 # Always prints SOMETHING (even "none detected → declare it"); never fails install.
@@ -148,7 +148,7 @@ FMT=""
 { have_file '.prettierrc' || have_file '.prettierrc.*' || have_file 'prettier.config.*'; } && FMT+="Prettier "
 { have_file '.eslintrc' || have_file '.eslintrc.*' || have_file 'eslint.config.*'; } && FMT+="ESLint "
 have_file '.rubocop.yml' && FMT+="RuboCop "
-[ -n "$FMT" ] && echo "- **Formatting/style is enforced by: ${FMT}** — match it (run the formatter / \`{{CMD_LINT}}\`); don't hand-style or fight the config."
+[ -n "$FMT" ] && echo "- **Formatting/style is enforced by: ${FMT}** — match it (run the formatter / your \`commands.lint\`); don't hand-style or fight the config."
 echo
 
 echo "## Always"
