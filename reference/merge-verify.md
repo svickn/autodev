@@ -1,31 +1,25 @@
----
-name: merge-verify
-description: >
-  Clean-room integration check after a merge. Reproduces CI/prod conditions
-  (fresh checkout, clean install, full suite + build + e2e + live smoke) so
-  "worked on my machine" can't slip through. Auto-reverts a bad merge and
-  generates the report that backs the human's final prod sign-off.
----
-
 # merge-verify — prove it works AFTER the merge, not just on the story branch
+
+> Read inline from `reference/devloop.md` after every squash-merge, and from
+> `/autodev:loop`'s feature close-out step. Not independently invokable.
 
 A story branch passing in isolation is NOT proof the *integrated* result works.
 This is the engine's answer to classic "it worked on my local." Invoked by
-`/devloop` after a squash-merge into the feature branch, and as the gate around
-the human merge to `{{DEFAULT_BRANCH}}`.
+`/autodev:loop` after a squash-merge into the feature branch, and as the gate around
+the human merge to `repo.default_branch`.
 
 ## 1 · Clean-room integration check (after a merge into the feature branch)
 - **Hermetic (B3 · SAFETY)** — export `qa.hermetic.env` first; the clean-room run
   (incl. the live smoke) must NEVER hit production services/creds.
 - **Fresh state** — a clean checkout/worktree of the merged feature branch, NOT
   the dev's warm tree (`git clean -fdx` equivalent / separate worktree).
-- **Clean install from the lockfile** — `{{CMD_INSTALL}}` (e.g. `npm ci`). Never
+- **Clean install from the lockfile** — `commands.install` (e.g. `npm ci`). Never
   reuse cached `node_modules`; this is what catches missing deps / lockfile drift.
 - **Full gates on the integrated result** — run via the configured `qa.test_layers.*`
-  (+ `qa.docker_up` / `qa.seed_test` prep) rather than a bare `{{CMD_TEST}}`, so the
-  required exclusions/concurrency/seed are applied; plus `{{CMD_LINT}}` · `{{CMD_BUILD}}`
-  · the e2e suite in `{{E2E_DIR}}/`. Judge against any `qa._known_baseline`.
-- **Live smoke** — start the app (`{{CMD_APP_RUN}}` → `{{APP_URL}}`) and exercise
+  (+ `qa.docker_up` / `qa.seed_test` prep) rather than a bare `commands.test`, so the
+  required exclusions/concurrency/seed are applied; plus `commands.lint` · `commands.build`
+  · the e2e suite in `qa.e2e_dir/`. Judge against any `qa._known_baseline`.
+- **Live smoke** — start the app (`commands.app_run` → `commands.app_url`) and exercise
   the feature's critical path live (evidence-collector / Playwright); attach
   screenshots.
 - **CI parity** — `draft_pr`: confirm CI green on the merge commit. `local_diff`:
@@ -51,7 +45,7 @@ assembled branch:
   cross-suite run on the whole branch, e.g. all backend + UI + e2e together), not
   just the per-story layers. Judge against `qa._known_baseline`.
 - **Live system smoke** — if `qa.acceptance.live_system`, start the assembled app
-  (`{{CMD_APP_RUN}}` → `{{APP_URL}}`) and drive an **end-to-end path across the
+  (`commands.app_run` → `commands.app_url`) and drive an **end-to-end path across the
   whole feature** (multiple stories together, not one in isolation) via
   evidence-collector / Playwright; attach screenshots.
 - A real failure here → localize to a story (`[sc-<id>]` trail), back to
@@ -73,10 +67,10 @@ Then generate the **acceptance package** (post on the feature issue / Project) �
 
 **Preview environment (if `preview.enabled`) — the human accepts a RUNNING PRODUCT,
 not a diff.** Start the assembled feature-branch app (`preview.command`, default
-`{{CMD_APP_RUN}}`; **hermetic env applied** — a preview must never touch prod
+`commands.app_run`; **hermetic env applied** — a preview must never touch prod
 services) and include in the acceptance comment: the **URL** (`preview.url`, default
-`{{APP_URL}}`) and the **exact relaunch one-liner** (`git checkout
-{{FEATURE_PREFIX}}<slug> && <command>` → URL). Ticks are stateless, so the engine's
+`commands.app_url`) and the **exact relaunch one-liner** (`git checkout
+repo.feature_branch_prefix<slug> && <command>` → URL). Ticks are stateless, so the engine's
 instance may not outlive the session — the posted command is the durable path; the
 running instance is a courtesy. 🗒️ `🖥️ preview up · <url> · relaunch: <cmd>`.
 
@@ -85,10 +79,10 @@ integrated suites ✓ · live smoke ✓ · report + preview posted; awaiting hum
 sign-off"`** (project mode: the equivalent `acceptance` project-status move).
 **Stop — human decision.**
 
-## 3 · Ship to `{{DEFAULT_BRANCH}}` + sign-off (humans only) — per Delivery mode
+## 3 · Ship to `repo.default_branch` + sign-off (humans only) — per Delivery mode
 - **`draft_pr`:** open the feature PR if not already open and **attach its URL to the
   feature** (`tracker.mjs attach <feature> <pr-url> --title "feature PR"`); only a
-  **human** merges it to `{{DEFAULT_BRANCH}}` —
+  **human** merges it to `repo.default_branch` —
   branch protection enforces this; the bot never can. After it deploys, run a
   **post-deploy smoke** against the REAL environment (the deployed URL, not
   localhost), regenerate the report; **final prod sign-off is the human's**. If the
@@ -104,8 +98,9 @@ sign-off"`** (project mode: the equivalent `acceptance` project-status move).
 - Clean install (`npm ci`-equivalent, no warm cache) is non-negotiable — it's the
   whole point of this skill.
 - A **revert** is always preferable to a broken shared branch.
-- Per **Delivery mode**: `draft_pr` → the bot pushes `{{FEATURE_PREFIX}}*` /
-  `{{STORY_PREFIX}}/*` and may squash story→feature, but NEVER merges into
-  `{{DEFAULT_BRANCH}}` (needs bot git identity + branch protection). `local_diff` →
-  the bot pushes **nothing** (enforced by `.git/hooks/pre-push`); it squashes
-  story→feature **locally** and never merges `{{DEFAULT_BRANCH}}`.
+- Per **Delivery mode**: `draft_pr` → the bot pushes `repo.feature_branch_prefix*` /
+  `repo.story_branch_prefix/*` and may squash story→feature, but NEVER merges into
+  `repo.default_branch` (needs bot git identity + branch protection). `local_diff` →
+  the bot pushes **nothing** (enforced by the plugin's `PreToolUse` push-guard
+  hook); it squashes
+  story→feature **locally** and never merges `repo.default_branch`.
