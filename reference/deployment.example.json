@@ -20,14 +20,9 @@
     "feature_to_main": "merge_commit"
   },
 
-  "install": {
-    "docs_policy": "preserve",
-    "_docs_policy_note": "How install treats team-authored instruction files. preserve (default): NEVER overwrite your AGENTS.md / CLAUDE.md (autoDev ships its manual as .claude/autodev.md, not .claude/CLAUDE.md), and back up any foreign .claude/settings.json to settings.json.pre-autodev before writing autoDev's. overwrite: legacy behavior — replace a foreign settings.json in place. Either way autoDev NEVER writes AGENTS.md / CLAUDE.md, and the dev agent is denied from editing them (it proposes convention changes via a separate PR)."
-  },
-
   "tracker": {
     "kind": "linear",
-    "_kind_note": "WHERE the board (the only state machine) lives. All ops go through scripts/autodev/tracker.mjs in both modes. 'local' = git-native board (.autodev/board/*.json): zero setup, no token, no rate limits, offline; view with 'tracker.mjs board' (text + board.html). 'linear' = the board IS Linear (live API; required for intake.mode=linear). New deployments should start 'local' and add Linear later if wanted.",
+    "_kind_note": "WHERE the board (the only state machine) lives. All ops go through the facade ${CLAUDE_PLUGIN_ROOT}/scripts/tracker.mjs in both modes. 'local' = git-native board (.autodev/board/*.json): zero setup, no token, no rate limits, offline; view with 'tracker.mjs board' (text + board.html). 'linear' = the board IS Linear (live API; required for intake.mode=linear). New deployments should start 'local' and add Linear later if wanted.",
     "mirror": {
       "linear": false,
       "_note": "local kind only: true = ALSO mirror to Linear asynchronously (best-effort dashboard). Ops queue to .autodev/board/.mirror-queue.jsonl; drain with 'tracker.mjs flush-mirror' (e.g. at the end of each tick). Local stays the source of truth — Linear rate limits never block the pipeline."
@@ -39,7 +34,7 @@
     "team": "AcmeCo Engineering",
     "team_key": "ACME",
     "team_id": "FILL_AT_SETUP",
-    "_team_id_note": "the team UUID — install.sh uses it to auto-create the standard board columns when ~/.config/autodev/<client>.linear.token is present.",
+    "_team_id_note": "the team UUID — used when creating the standard board columns by hand per ops/linear-setup.md (there is no automated setup step; the operator runs the GraphQL calls, or /autodev:init points at this doc as a manual next-step).",
     "api_token_env": "LINEAR_API_TOKEN",
     "mapping": {
       "feature": "Linear Project",
@@ -50,9 +45,9 @@
     "state_model": "status",
     "_state_model_note": "STANDARD: every autoDev deployment uses the SAME canonical Linear status columns below — that's what makes the engine portable. Create them with ops/linear-setup.md and paste each column's UUID into 'id'. The engine moves an issue's STATUS at every step, so the board IS the live pipeline. (H) = a human gate/action. Names ending in (H) must keep the (H) — the engine reads it as 'human'.",
     "hierarchy": "issue",
-    "_hierarchy_note": "TOGGLE (like braingrid — preferred-optional, degrades gracefully). 'issue' (DEFAULT, zero extra setup, no org-level changes): the feature rides a feature ISSUE through the gate columns below (New Request → … → Done); a Project + Milestones group the stories. 'project' (OPT-IN): the feature IS a Linear Project and its gates are ORG-LEVEL project statuses (see project_statuses) — cleaner Projects view, but the custom statuses appear workspace-wide, so only use it in a workspace dedicated to this. install.sh creates project_statuses only when hierarchy=='project'.",
+    "_hierarchy_note": "TOGGLE (like braingrid — preferred-optional, degrades gracefully). 'issue' (DEFAULT, zero extra setup, no org-level changes): the feature rides a feature ISSUE through the gate columns below (New Request → … → Done); a Project + Milestones group the stories. 'project' (OPT-IN): the feature IS a Linear Project and its gates are ORG-LEVEL project statuses (see project_statuses) — cleaner Projects view, but the custom statuses appear workspace-wide, so only use it in a workspace dedicated to this. project_statuses is created by hand per ops/linear-setup.md (no automated step) when hierarchy=='project'.",
     "project_statuses": {
-      "_note": "ONLY used when hierarchy=='project'. Org-level Linear project statuses for the FEATURE lifecycle/gates. install.sh creates them (projectStatusCreate) and you paste the ids. The 'statuses' below then serve only the TASK pipeline.",
+      "_note": "ONLY used when hierarchy=='project'. Org-level Linear project statuses for the FEATURE lifecycle/gates. Create them by hand per ops/linear-setup.md (GraphQL calls, or `scripts/linear.mjs create-project-status`) and paste the ids. The 'statuses' below then serve only the TASK pipeline.",
       "new_request":  { "name": "New Request",     "id": "FILL_IF_PROJECT_MODE", "type": "backlog" },
       "clarifying":   { "name": "Clarifying (H)",  "id": "FILL_IF_PROJECT_MODE", "type": "planned",   "human": true },
       "prd_review":   { "name": "PRD Review (H)",   "id": "FILL_IF_PROJECT_MODE", "type": "planned",   "human": true },
@@ -186,7 +181,7 @@
 
   "review": {
     "delivery": "draft_pr",
-    "_delivery_note": "HOW work reaches a human (see autodev.md ▸ Delivery mode — authoritative). draft_pr (default) = the bot pushes feature/story branches + opens GitHub draft PRs; humans merge via GitHub. local_diff = LOCAL-ONLY: no git push, no PRs — branches/merges stay local and gates review a local diff posted on the ticket (enforced by the installed .git/hooks/pre-push).",
+    "_delivery_note": "HOW work reaches a human (see reference/manual.md ▸ Delivery mode — authoritative). draft_pr (default) = the bot pushes feature/story branches + opens GitHub draft PRs; humans merge via GitHub. local_diff = LOCAL-ONLY: no git push, no PRs — branches/merges stay local and gates review a local diff posted on the ticket (enforced by the plugin's PreToolUse push-guard hook, hooks/guard-push.sh).",
     "granularity": "per_story",
     "_granularity_note": "per_story = human reviews each story (calibration). per_feature = stories auto-merge to the feature branch on AI-QA pass; the human acceptance-tests the WHOLE feature and signs off → main (the PM/dev-team model). Start per_story for the first feature, then flip to per_feature.",
     "auto_merge_to_feature_branch": false,
@@ -200,7 +195,7 @@
     "_enabled_note": "WIP DURABILITY — distinct from review.delivery / PRs. true (default): once the feature branch is created AND after EVERY story merges into it, the engine pushes the feature branch to its remote so an interrupted run never loses committed work. This is a BACKUP, not a PR/review artifact — the feature PR is still opened only at close-out (§8) and humans still gate + merge. It only ADVANCES the remote feature ref (fast-forward; never force, never a default-branch push).",
     "remote": "origin",
     "_remote_note": "Which git remote to back up to (default: origin — the same remote draft_pr pushes to). If you change it, mirror the change in .claude/settings.json's allowed push pattern.",
-    "_delivery_note": "ONLY active when review.delivery is 'draft_pr'. Under 'local_diff' (no-push / code stays off any remote by design) backup is a LOGGED NO-OP — it never overrides the no-push rule or the pre-push hook."
+    "_delivery_note": "ONLY active when review.delivery is 'draft_pr'. Under 'local_diff' (no-push / code stays off any remote by design) backup is a LOGGED NO-OP — it never overrides the no-push rule or the push-guard hook (hooks/guard-push.sh)."
   },
 
   "personas": {

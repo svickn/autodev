@@ -69,8 +69,10 @@ fi
 
 # Harmonized boundary (both alternatives use the SAME whitespace/colon/EOL
 # boundary — a bare \b would treat "-"/"." as boundaries and false-match
-# "main-feature"/"main.bak" against a default branch named "main").
-if echo "$CMD" | grep -qE "(refs/heads/${DEFAULT_BRANCH}([[:space:]:]|\$)|[[:space:]:]${DEFAULT_BRANCH}([[:space:]:]|\$))"; then
+# "main-feature"/"main.bak" against a default branch named "main"). The leading
+# class also includes "+" so a force-push shorthand like "+main" is still
+# recognized as naming the default branch.
+if echo "$CMD" | grep -qE "(refs/heads/${DEFAULT_BRANCH}([[:space:]:]|\$)|[[:space:]:+]${DEFAULT_BRANCH}([[:space:]:]|\$))"; then
   deny "autoDev: only humans merge '${DEFAULT_BRANCH}' (Gate 2 + branch protection) — the engine never pushes it."
 fi
 

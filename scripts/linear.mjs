@@ -231,7 +231,7 @@ const cmds = {
     if (!d.projectUpdate.success) die('set-project-status failed');
     console.log(`project ${d.projectUpdate.project.name} -> ${ps.name}`);
   },
-  async 'create-project-status'(token, cfg, a) { // org-level; used by install.sh in project mode
+  async 'create-project-status'(token, cfg, a) { // org-level; run by hand during setup (ops/linear-setup.md) when hierarchy=="project"
     const f = flags(a);
     if (!f.name || !f.type) die('create-project-status needs --name and --type (backlog|planned|started|completed|canceled)');
     const input = { name: f.name, type: f.type, color: f.color || '#95a2b3' };

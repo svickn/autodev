@@ -60,7 +60,7 @@ if [[ "$KIND" == "local" ]]; then
   if [[ "$MIRROR" == "true" ]]; then
     # mirroring is async/best-effort, so a missing token is a warn, not a fail
     if [[ -n "${LINEAR_API_TOKEN:-}" ]] || [[ -f "$HOME/.config/autodev/$CLIENT.linear.token" ]]; then
-      ok "mirror token present (flush with: node scripts/autodev/tracker.mjs flush-mirror)"
+      ok "mirror token present (flush with: node $HERE/tracker.mjs flush-mirror)"
     else
       warn "tracker.mirror.linear is on but no Linear token — ops will queue until one exists"
     fi

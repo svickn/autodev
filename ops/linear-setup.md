@@ -71,8 +71,13 @@ How a **feature** is represented. Default needs nothing beyond the columns above
   columns (New Request → … → Done); a Project + Milestones group its stories. No
   org-level changes.
 - **`project` (opt-in):** the feature **is a Linear Project**, with **org-level
-  project statuses** for its gates. `install.sh` creates these automatically when
-  `hierarchy: "project"`; or create them manually:
+  project statuses** for its gates. There's no automated step for this — create
+  them by hand, either one at a time via the CLI:
+  ```bash
+  node "${CLAUDE_PLUGIN_ROOT}/scripts/linear.mjs" create-project-status \
+    --name "New Request" --type backlog --color "#95a2b3" --position 90
+  ```
+  or with the GraphQL API directly:
   ```bash
   mkps () { curl -s -X POST "$API" -H "Content-Type: application/json" -H "Authorization: $TOKEN" \
     -d "$(jq -n --arg n "$1" --arg ty "$2" --arg c "$3" '{query:"mutation($i:ProjectStatusCreateInput!){projectStatusCreate(input:$i){success projectStatus{id name}}}",variables:{i:{name:$n,type:$ty,color:$c}}}')" \
