@@ -52,7 +52,7 @@ that to eliminate the render step and make activation fully opt-in.
   directory; revisit only if actually needed later).
 - Auto-discovering/registering `prd`/`breakdown`/`devloop`/`merge-verify`
   as separately invokable skills — they become internal reference docs
-  driven by `/autodev:run`.
+  driven by `/autodev:loop`.
 
 ## Plugin package layout
 
@@ -64,8 +64,8 @@ autodev/
 │   └── plugin.json              # manifest: name "autodev", version, etc.
 ├── commands/
 │   ├── init.md                  # /autodev:init
-│   ├── intake.md                # /autodev:intake
-│   └── run.md                   # /autodev:run
+│   ├── new.md                   # /autodev:new
+│   └── loop.md                  # /autodev:loop
 ├── reference/                   # plain docs, NO auto-match frontmatter —
 │   │                             # read explicitly by path from commands/*
 │   ├── manual.md                # the former autodev.md (non-negotiables, toggles)
@@ -109,21 +109,21 @@ manifest name). Nothing else in the plugin auto-fires from conversation.
   same auth-bound manual steps (BrainGrid, Linear token, branch protection)
   the old install report did. Idempotent — re-running lets you reconfigure.
 
-- **`/autodev:intake`** — the front door for new work (feature/bug capture,
+- **`/autodev:new`** — the front door for new work (feature/bug capture,
   interview, PRD kickoff). Reads `reference/manual.md` +
   `reference/prd.md`-adjacent intake logic explicitly, then proceeds.
 
-- **`/autodev:run`** — the umbrella router. Reads `.autodev/deployment.json`
+- **`/autodev:loop`** — the umbrella router. Reads `.autodev/deployment.json`
   + board/git state, decides what stage is next (PRD drafting → breakdown →
   devloop heartbeat → merge-verify), reads the corresponding
   `reference/*.md` playbook by path, and executes one bounded pass. This is
   what a human runs manually to advance work, and what the timer calls
-  headlessly (`claude -p "/autodev:run"`).
+  headlessly (`claude -p "/autodev:loop"`).
 
-Both `run` and `intake` open by checking whether
+Both `loop` and `new` open by checking whether
 `.autodev/deployment.json` exists; if not, they run the same init flow as
 `/autodev:init` before doing their normal job. So a brand-new repo can
-start from either `/autodev:intake` (typical) or `/autodev:run` (also
+start from either `/autodev:new` (typical) or `/autodev:loop` (also
 fine) without knowing `/autodev:init` exists — but it also stays available
 as an explicit, re-runnable step.
 
@@ -135,7 +135,7 @@ repo's own `settings.json`) registers a lightweight `SessionStart` hook:
 - Checks for `.autodev/deployment.json` in the repo root.
 - If absent: does nothing.
 - If present: emits **one line** to context — e.g. "autoDev is configured
-  here (N stories in flight) — `/autodev:run` to continue." — no manual
+  here (N stories in flight) — `/autodev:loop` to continue." — no manual
   injection, no conventions dump, no forced workflow.
 
 This replaces `session-init.sh` (deleted) and is the "minimal ambient
@@ -173,14 +173,14 @@ Plugin `settings.json` only supports `agent`/`subagentStatusLine` — it
 cannot ship a permissions allow-list that auto-applies to a project, so
 this is not solved by "put it in the plugin" the way hooks/commands are.
 
-- **Interactive `/autodev:run` or `/autodev:intake`**: a human is present,
+- **Interactive `/autodev:loop` or `/autodev:new`**: a human is present,
   so normal Claude Code permission prompts apply. No pre-grant needed or
   written anywhere.
 - **Headless timer ticks**: `devloop-tick.sh` builds an `--allowedTools`
   list from `.autodev/deployment.json` (`commands.install/test/lint/build`,
   scoped git push patterns, `mcp__linear__*`, etc. — the same set the old
   `settings.json` template hard-coded) and invokes
-  `claude -p "/autodev:run" --allowedTools "..."` directly. The allow-list
+  `claude -p "/autodev:loop" --allowedTools "..."` directly. The allow-list
   lives only in that invocation, never written to the repo.
 
 This fully removes the `.claude/settings.json` write from the install path
@@ -216,17 +216,17 @@ Unchanged in spirit from today's Phase-3 timer, relocated:
   location, `~/.autodev/bin/`, and renders the `launchd.plist` to point
   there, same as `ops/launchd.plist.template` does today.
 - This is per-operator-machine state, not per-repo — it never appears in
-  any client repo, and a typical `/autodev:run`-only user never triggers
+  any client repo, and a typical `/autodev:loop`-only user never triggers
   it.
 
 ## Data flow — three walkthroughs
 
-**First run in a fresh repo (`/autodev:intake`, no config yet):**
+**First run in a fresh repo (`/autodev:new`, no config yet):**
 `.autodev/deployment.json` missing → run init wizard inline → detect
 branch/package manager → ask ~5 questions → write config → proceed to the
 normal intake interview → create the feature-request issue on the board.
 
-**Manual advance (`/autodev:run`, config exists):**
+**Manual advance (`/autodev:loop`, config exists):**
 Read `.autodev/deployment.json` → reconcile board state → determine stage
 (PRD review pending? breakdown pending? stories ready for dev? a merge just
 happened and needs verify?) → read the matching `reference/*.md` playbook
@@ -237,14 +237,14 @@ exit.
 `launchd` fires `~/.autodev/bin/devloop-tick.sh <repo-path>` on interval →
 script reads `<repo-path>/.autodev/deployment.json` → acquires lock, checks
 rate-limit file → builds `--allowedTools` from config → runs
-`claude -p "/autodev:run" --allowedTools "..." -C <repo-path>` → tick
+`claude -p "/autodev:loop" --allowedTools "..." -C <repo-path>` → tick
 completes → digest/report per `reporting.cadence` → exits. No Claude Code
 session is left running; no hook fires beyond the one-line ambient signal
 (irrelevant here since `-p` mode has no interactive context to show it in).
 
 ## Error handling / edge cases
 
-- **`/autodev:run` or `/autodev:intake` in a repo with a stale/invalid
+- **`/autodev:loop` or `/autodev:new` in a repo with a stale/invalid
   `.autodev/deployment.json`** (e.g. hand-edited into invalid JSON): fail
   fast with a clear error pointing at the file, do not silently fall back
   to re-running init over it (would clobber intentional settings).
@@ -271,7 +271,7 @@ session is left running; no hook fires beyond the one-line ambient signal
    baked in at install time).
 3. Port each `template/.claude/skills/*.md` → `reference/*.md`, dropping
    the auto-match `description` frontmatter.
-4. Write the three `commands/*.md` (`init`, `intake`, `run`), each opening
+4. Write the three `commands/*.md` (`init`, `new`, `loop`), each opening
    with the "read the manual, check for config, bootstrap if missing"
    preamble.
 5. Write `hooks/hooks.json` (ambient SessionStart signal + PreToolUse push
@@ -296,7 +296,7 @@ session is left running; no hook fires beyond the one-line ambient signal
   end-to-end, confirm only `.autodev/deployment.json` is written (nothing
   under `.claude/`, nothing under `.git/hooks/`).
 - Confirm a plain "we should add X" conversation in that same session does
-  **not** trigger intake/PRD behavior — only `/autodev:intake` does.
+  **not** trigger intake/PRD behavior — only `/autodev:new` does.
 - Confirm the SessionStart hook prints the one-line signal (config
   present) and nothing at all in a repo with no `.autodev/deployment.json`.
 - Simulate a `git push origin main` via the Bash tool and confirm the
@@ -310,9 +310,7 @@ session is left running; no hook fires beyond the one-line ambient signal
 
 ## Open questions
 
-- Exact command names (`run` vs `next` vs `go`) — `run`/`intake`/`init` are
-  a placeholder set; bikeshed during implementation if a shorter name reads
-  better.
+- Command names are now settled: `init` / `new` / `loop`.
 - Whether `/autodev:init` should have an explicit "enable the 24/7 timer"
   sub-step/prompt, or whether that stays a separate manual step documented
   in `ops/` (leaning: keep it a separate, clearly-optional step so
