@@ -1,14 +1,10 @@
----
-name: breakdown
-description: >
-  Break an approved PRD into Linear stories for {{CLIENT_NAME}}. Use after
-  Gate 1 — when the operator approves the PRD / moves the epic out of PRD Review.
-  Runs BrainGrid /breakdown, then copies each task's FULL spec into a
-  self-contained Linear issue (so the dev agent never reads BrainGrid), adding
-  persona routing, risk class, AI-QA steps, and manual test steps.
----
-
 # Breakdown — Requirement → Linear stories
+
+> Read by `/autodev:loop` after Gate 1 — when the operator approves the PRD / moves
+> the epic out of PRD Review. Runs BrainGrid `/breakdown`, then copies each task's
+> FULL spec into a self-contained Linear issue (so the dev agent never reads
+> BrainGrid), adding persona routing, risk class, AI-QA steps, and manual test steps.
+> Not independently invokable.
 
 Read `.autodev/deployment.json` for: tracker states/labels, BrainGrid project,
 `personas.dev_routing`, `review.granularity`. Drive this with the
@@ -41,7 +37,7 @@ Read `.autodev/deployment.json` for: tracker states/labels, BrainGrid project,
      `braingrid task show <id> --format markdown` → the full task spec (description,
      acceptance criteria, implementation/build plan, test plan, edge cases).
      **Write that entire markdown into the issue body**, e.g.
-     `node scripts/autodev/tracker.mjs create-issue --title "<task>"
+     `node ${CLAUDE_PLUGIN_ROOT}/scripts/tracker.mjs create-issue --title "<task>"
      --desc "<full task markdown>" --stage ready_for_ai_dev --labels
      "ai-eligible,<tracker.instance_label>,…"` (the instance tag goes on EVERY issue
      this engine creates — principle 10),
@@ -53,7 +49,7 @@ Read `.autodev/deployment.json` for: tracker states/labels, BrainGrid project,
      - **Acceptance criteria** (objective, testable — the contract) · **AI QA steps**
        + **manual test steps** · **Tests required** note.
      - **`blocked by` links** for dependencies — set them explicitly with
-       `node scripts/autodev/tracker.mjs relate <blocker> <story> --type blocks`
+       `node ${CLAUDE_PLUGIN_ROOT}/scripts/tracker.mjs relate <blocker> <story> --type blocks`
        (don't rely on creation order).
      - **Touched files** — feeds the lane file-overlap guard + persona routing.
      - **`risk:` class** — `trivial` / `standard` / `sensitive` (isolated+well-tested
@@ -70,10 +66,10 @@ Read `.autodev/deployment.json` for: tracker states/labels, BrainGrid project,
 5. **Sizing.** Prefer small, single-purpose stories so reviews/QA stay tractable
    (guideline, not a hard line-count gate).
 
-6. **Create the feature branch** `{{FEATURE_PREFIX}}<feature-slug>` from
-   `{{DEFAULT_BRANCH}}`. **Establish the WIP backup (if `backup.enabled` AND delivery
+6. **Create the feature branch** ``repo.feature_branch_prefix`<feature-slug>` from
+   ``repo.default_branch``. **Establish the WIP backup (if `backup.enabled` AND delivery
    is `draft_pr`):** push the just-created feature branch to `backup.remote` (default
-   `origin`) — `git push <remote> {{FEATURE_PREFIX}}<feature-slug>` — so the branch
+   `origin`) — `git push <remote> `repo.feature_branch_prefix`<feature-slug>` — so the branch
    exists remotely from the start and every later task push has somewhere to land.
    This is a backup, not a PR — open nothing. Under `local_diff` (or `backup.enabled`
    false) skip this — push nothing. Apply `ai-eligible` to each story (this label — set
@@ -88,7 +84,7 @@ Read `.autodev/deployment.json` for: tracker states/labels, BrainGrid project,
    `🌱 breakdown done — feature branch <name> created · <N> stories across <M>
    epics released to AI Dev` (+ `· backup pushed → <remote>` if it ran in step 6).
    **Attach the branch link** (delivery `draft_pr` — once the branch exists remotely):
-   `tracker.mjs attach <feature> <repo.url>/tree/{{FEATURE_PREFIX}}<slug> --title
+   `tracker.mjs attach <feature> <repo.url>/tree/`repo.feature_branch_prefix`<slug> --title
    "feature branch"` so the card click-throughs to the code. (`local_diff`: no remote —
    the local commands are already posted.)
 
