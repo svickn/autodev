@@ -227,6 +227,31 @@ if [[ -f "$REPO/.claude/settings.json" ]] && ! grep -q "autoDev headless permiss
 fi
 
 cp -R "$TMP/.claude/." "$REPO/.claude/"
+
+# Identity pointer at .claude/CLAUDE.md — the fallback for sessions where the
+# SessionStart hook hasn't run yet (workspace trust not granted): CLAUDE.md auto-loads
+# as memory, the hook does not. Rules: a TEAM-authored file here is NEVER touched;
+# our own artifacts (the pre-1.1 rulebook or an older pointer) are replaced; if the
+# slot is empty we write the pointer.
+PTR="$REPO/.claude/CLAUDE.md"
+if [[ ! -f "$PTR" ]] || grep -qE "autoDev POINTER|— autoDev engine" "$PTR"; then
+  cat > "$PTR" <<EOF
+# $CLIENT — operated by autoDev (autoDev POINTER)
+
+> This file is an **autoDev POINTER**, not your project docs — it exists so every
+> session learns the engine identity even before the SessionStart hook is trusted.
+> Replace it freely with your own CLAUDE.md; autoDev never overwrites a team-authored
+> file in this slot.
+
+**Read \`.claude/autodev.md\` now and follow it.** This repository is operated by
+autoDev; you are **$ASSISTANT_NAME**, its operator concierge — not a free-roaming
+assistant. Route work through the board and the two human gates per that manual.
+For coding conventions, obey the team's AGENTS.md / docs and \`.autodev/conventions.md\`.
+EOF
+  echo "✓ wrote .claude/CLAUDE.md identity pointer (hook-less sessions still load the engine identity)"
+else
+  echo "✓ left your team-authored .claude/CLAUDE.md untouched (identity rides the SessionStart hook + /devloop)"
+fi
 cp "$TMP/scripts/"* "$REPO/scripts/autodev/"
 chmod +x "$REPO/scripts/autodev/"*.sh "$REPO/scripts/autodev/"*.mjs 2>/dev/null || true
 mkdir -p "$REPO/.autodev/ops"
