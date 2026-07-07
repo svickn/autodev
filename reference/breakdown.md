@@ -66,10 +66,10 @@ Read `.autodev/deployment.json` for: tracker states/labels, BrainGrid project,
 5. **Sizing.** Prefer small, single-purpose stories so reviews/QA stay tractable
    (guideline, not a hard line-count gate).
 
-6. **Create the feature branch** `repo.feature_branch_prefix`<feature-slug>` from
+6. **Create the feature branch** `repo.feature_branch_prefix<feature-slug>` from
    `repo.default_branch`. **Establish the WIP backup (if `backup.enabled` AND delivery
    is `draft_pr`):** push the just-created feature branch to `backup.remote` (default
-   `origin`) — `git push <remote> `repo.feature_branch_prefix`<feature-slug>` — so the branch
+   `origin`) — `git push <remote> repo.feature_branch_prefix<feature-slug>` — so the branch
    exists remotely from the start and every later task push has somewhere to land.
    This is a backup, not a PR — open nothing. Under `local_diff` (or `backup.enabled`
    false) skip this — push nothing. Apply `ai-eligible` to each story (this label — set
@@ -84,7 +84,7 @@ Read `.autodev/deployment.json` for: tracker states/labels, BrainGrid project,
    `🌱 breakdown done — feature branch <name> created · <N> stories across <M>
    epics released to AI Dev` (+ `· backup pushed → <remote>` if it ran in step 6).
    **Attach the branch link** (delivery `draft_pr` — once the branch exists remotely):
-   `tracker.mjs attach <feature> <repo.url>/tree/`repo.feature_branch_prefix`<slug> --title
+   `tracker.mjs attach <feature> <repo.url>/tree/repo.feature_branch_prefix<slug> --title
    "feature branch"` so the card click-throughs to the code. (`local_diff`: no remote —
    the local commands are already posted.)
 
