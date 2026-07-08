@@ -32,7 +32,8 @@ autodev/                              (the plugin package)
 │   ├── intake.md · prd.md · breakdown.md · devloop.md · merge-verify.md · story-template.md
 │   └── deployment.example.json       # the full config schema, used by /autodev:init
 ├── scripts/                          # tracker.mjs · linear.mjs · report.mjs · doctor.sh · detect-conventions.sh ·
-│                                      # check-docs.sh · devloop-tick.sh · watchdog.sh · notify.sh
+│                                      # check-docs.sh · devloop-tick.sh · watchdog.sh · notify.sh ·
+│                                      # write-identity-pointer.sh
 ├── hooks/hooks.json                  # a one-line SessionStart signal + two PreToolUse guardrails (push, docs) — no settings.json write, ever
 ├── ops/{linear-setup.md, launchd-timer.md, launchd.plist.template}
 ├── BACKLOG.md
