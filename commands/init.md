@@ -45,7 +45,13 @@ Set up autoDev for **this repo**. Safe to re-run any time to reconfigure.
 5. Create the `.autodev` runtime directories: `mkdir -p .autodev/board .autodev/logs`
    (harmless if `tracker.kind` ends up `linear` — `board/` just stays empty; the
    git-native board and the operator digest log both land here on first use).
-6. Print the manual next-steps report — nothing here is automated, all of it needs
+6. Run `${CLAUDE_PLUGIN_ROOT}/scripts/write-identity-pointer.sh` from the repo root.
+   This writes (or refreshes) a small identity pointer at `.claude/CLAUDE.md` so a
+   session that hasn't granted workspace trust yet — and so never runs the
+   SessionStart hook — still learns the engine identity, since `CLAUDE.md` auto-loads
+   as memory regardless of hook trust. It never touches a team-authored file in that
+   slot; it only writes an empty slot or replaces its own prior pointer.
+7. Print the manual next-steps report — nothing here is automated, all of it needs
    a human with the right auth:
    - If `tracker.kind` is `linear`: point at
      `${CLAUDE_PLUGIN_ROOT}/ops/linear-setup.md` for creating the board columns +
@@ -57,7 +63,7 @@ Set up autoDev for **this repo**. Safe to re-run any time to reconfigure.
      branch so only humans merge; the bot pushes feature/story branches only.
    - 24/7 timer (optional — skip this unless the operator asks for it): see
      `${CLAUDE_PLUGIN_ROOT}/ops/launchd-timer.md`.
-7. Run `${CLAUDE_PLUGIN_ROOT}/scripts/doctor.sh` from the repo root and show the
+8. Run `${CLAUDE_PLUGIN_ROOT}/scripts/doctor.sh` from the repo root and show the
    operator anything it flags with a ✗.
-8. Confirm: "`.autodev/deployment.json` is ready. Run `/autodev:new` to capture the
+9. Confirm: "`.autodev/deployment.json` is ready. Run `/autodev:new` to capture the
    first piece of work, or `/autodev:loop` once stories are queued."

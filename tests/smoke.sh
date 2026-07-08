@@ -29,6 +29,7 @@ echo '{}' > "$TGT/tsconfig.json"; touch "$TGT/codegen.ts"
 mkdir -p "$TGT/.autodev"
 jq '.client_name="SmokeCo" | .repo.local_path=$p | .tracker.kind="local"' \
   --arg p "$TGT" "$PLUGIN/reference/deployment.example.json" > "$TGT/.autodev/deployment.json"
+bash "$PLUGIN/scripts/write-identity-pointer.sh" "$TGT" >/dev/null 2>&1
 
 echo "footprint (the whole point of the plugin conversion):"
 check "no .claude/skills written" bash -c "! test -d '$TGT/.claude/skills'"
@@ -49,6 +50,21 @@ check "comment rule present" grep -q "explain WHY" "$TGT/.autodev/conventions.md
 
 echo "docs conflict scan:"
 check "flags 'commit directly to main'" bash -c "bash '$PLUGIN/scripts/check-docs.sh' '$TGT' | grep -q 'only humans merge'"
+
+echo "identity pointer (hook-less fallback):"
+# scenario A: the main TGT has a TEAM CLAUDE.md — must have been preserved (asserted
+# above). scenario B: bare repo -> pointer written. C: our stale pointer -> replaced.
+T2=$(mktemp -d); git -C "$T2" init -q; echo '{}' > "$T2/package.json"
+mkdir -p "$T2/.autodev"
+jq '.client_name="BareCo" | .repo.local_path=$p | .tracker.kind="local"' \
+  --arg p "$T2" "$PLUGIN/reference/deployment.example.json" > "$T2/.autodev/deployment.json"
+bash "$PLUGIN/scripts/write-identity-pointer.sh" "$T2" >/dev/null 2>&1
+check "bare repo gets the pointer" grep -q "autoDev POINTER" "$T2/.claude/CLAUDE.md"
+check "pointer names the command surface" grep -q "/autodev:loop" "$T2/.claude/CLAUDE.md"
+printf '# BareCo — autoDev engine\nold stale rulebook\n' > "$T2/.claude/CLAUDE.md"
+bash "$PLUGIN/scripts/write-identity-pointer.sh" "$T2" >/dev/null 2>&1
+check "our stale pointer is replaced (not treated as a team file)" grep -q "autoDev POINTER" "$T2/.claude/CLAUDE.md"
+rm -rf "$T2"
 
 echo "session-signal hook (one line, only when configured):"
 check "emits a short line naming both commands" bash -c \
@@ -83,19 +99,6 @@ check "comment" bash -c "cd '$TGT' && node '$TRK' comment '$LID' 'progress'"
 check "history recorded in issue file" bash -c "jq -e '.history | length >= 2' '$TGT/.autodev/board/$LID.json'"
 check "board renders html" bash -c "cd '$TGT' && node '$TRK' board >/dev/null && test -f '$TGT/.autodev/board.html'"
 check "tracker doctor ok" bash -c "cd '$TGT' && node '$TRK' doctor | grep -q 'local board'"
-
-echo "identity pointer (hook-less fallback):"
-# scenario A: the main TGT has a TEAM CLAUDE.md — must have been preserved (asserted
-# above). scenario B: bare repo -> pointer written. C: our stale rulebook -> replaced.
-T2=$(mktemp -d); git -C "$T2" init -q; echo '{}' > "$T2/package.json"
-CFG2=$(mktemp).json; jq '.client_name="BareCo" | .repo.local_path=$p' --arg p "$T2" "$ENGINE/config/deployment.example.json" > "$CFG2"
-bash "$ENGINE/install.sh" "$CFG2" >/dev/null 2>&1
-check "bare repo gets the pointer" grep -q "autoDev POINTER" "$T2/.claude/CLAUDE.md"
-check "pointer names the manual" grep -q "autodev.md" "$T2/.claude/CLAUDE.md"
-printf '# BareCo — autoDev engine\nold stale rulebook\n' > "$T2/.claude/CLAUDE.md"
-bash "$ENGINE/install.sh" "$CFG2" >/dev/null 2>&1
-check "our stale rulebook is replaced (not treated as team file)" grep -q "autoDev POINTER" "$T2/.claude/CLAUDE.md"
-rm -rf "$T2" "$CFG2"
 
 echo
 if [[ $FAIL -eq 0 ]]; then echo "smoke: PASS"; else echo "smoke: FAIL"; fi
