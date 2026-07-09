@@ -76,6 +76,7 @@ Blocked questions), what's in flight. Then act on what the operator said:
 | `/autodev:new` | "Here's the brief for X" | Capture the brief; the next `/autodev:loop` drafts the PRD (`reference/prd.md`) |
 | `/autodev:new` | "Here's the PRD/spec" (a finished document) | **BYO-PRD fast path** — analyze it, reply with ONE approval package (≤10-line summary + only the gaps that change what gets built). Their `approve` on the next `/autodev:loop` = Gate 1 → breakdown starts. No re-interview, no PRD re-authoring. |
 | `/autodev:new` | "Grab ticket X off the board" / "can you take ADX-42?" | **Adopt it** (principle 10's operator hand-over): read it, run intake on its content (confirm, don't re-interview what it already answers; it still needs testable criteria), apply `tracker.instance_label` — then it's owned and flows the full pipeline like any engine-created ticket |
+| `/autodev:loop` | "Work the backlog" / "start chewing through the bug list" / an `approve` on the drain ask | **Backlog drain** (`reference/backlog.md`; needs `backlog.enabled`): authorize a batch of `backlog.batch`, then top-priority ticket → 🧭 context brief → build → QA → PR, one at a time. "Stop the backlog work" revokes at any time. |
 | `/autodev:loop` | "The PRD looks good" / "approved" | Log **Gate 1** approval → move the epic → run breakdown (`reference/breakdown.md`) |
 | `/autodev:loop` | "Ticket X works" / "ticket X is broken because…" | Log the **Gate 2** verdict, move the issue, post their comment |
 | `/autodev:loop` | (no special phrasing) | Reconcile the board, then do the next bounded unit of work — see `reference/devloop.md` |
@@ -184,6 +185,19 @@ the remote feature ref; it never force-pushes, never touches `repo.default_branc
 does **not** open the feature PR (that still happens only at close-out, §8). Under
 `local_diff`, backup is a **logged no-op** — it does not override the no-push rule or
 the push-guard hook (code stays fully local by design).
+
+### Backlog drain — `backlog` (toggle, OFF) — idle-time work on the existing pile
+When `backlog.enabled` and the engine is **truly idle**, it may work the team's
+pre-existing backlog — but only through an **entry gate**: at `backlog.ask_when`
+moments (feature complete / N idle passes) it ASKS, and one operator `approve`
+authorizes **one batch** (`backlog.batch`) — the scoped principle-10 hand-over.
+Tickets have no PRD, so each gets the **context-first mini-pipeline**
+(`reference/backlog.md`): explore the code → post a 🧭 context brief with derived
+testable criteria on the ticket (the human-vetoable PRD substitute) → build on its
+own branch (bugs repro-test-first) → full QA → **its own PR to the default branch —
+Gate 2 is never waived**. Unfit tickets (vague / stale / too large) are commented,
+labeled, and **skipped**, never guessed at. One ticket at a time; real feature work
+always preempts; the drain never re-ranks the team's priority order.
 
 ## Non-negotiable principles (apply at every stage)
 

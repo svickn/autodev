@@ -181,6 +181,22 @@
     "_note": "Close the 'human accepts a DIFF instead of a running product' gap. At the acceptance gate (merge-verify §2), the engine starts the ASSEMBLED feature branch app (command, default commands.app_run; hermetic env applied) and posts the URL (default commands.app_url) on the acceptance ticket — PLUS the exact one-liner to relaunch it (ticks are stateless; the posted command always works even if the engine's instance has exited). The human accepts a running product, not a diff."
   },
 
+  "backlog": {
+    "enabled": false,
+    "_enabled_note": "BACKLOG DRAIN (reference/backlog.md) — work the team's existing ticket pile during IDLE time only (real feature work always preempts). OFF by default; even when on, the engine never starts without an operator approval at the entry gate. Each ticket gets a context-first mini-pipeline instead of a PRD: explore the code, post a context brief with DERIVED testable criteria on the ticket, build (bugs are repro-test-first), full QA, own branch + PR to the default branch. Gate 2 (human reviews + merges every PR) is never waived. Unfit tickets (too vague / stale / too large) get a comment + label and are SKIPPED, never silently built.",
+    "ask_when": ["feature_complete", "idle"],
+    "_ask_when_note": "When to ASK for entry approval: feature_complete = a feature just shipped and the queue is empty; idle = backlog.idle_ticks consecutive heartbeat passes did nothing. 'Not now' suppresses re-asking until the next trigger.",
+    "idle_ticks": 4,
+    "batch": 3,
+    "_batch_note": "One approval authorizes ONE batch of this many tickets (the scoped principle-10 hand-over), one ticket at a time, then the engine reports what shipped and asks again. Keeps a 666-ticket backlog from becoming a runaway train.",
+    "source": {
+      "status": "Backlog",
+      "labels": [],
+      "type": "any",
+      "_note": "Where the pile lives (tracker-agnostic via tracker.mjs; for kind=linear a status/label query — tickets NOT in the engine's pipeline columns). type: any | bug | feature. Selection = highest tracker priority, then list order (the team's ordering is trusted, never re-ranked)."
+    }
+  },
+
   "review": {
     "delivery": "draft_pr",
     "_delivery_note": "HOW work reaches a human (see reference/manual.md ▸ Delivery mode — authoritative). draft_pr (default) = the bot pushes feature/story branches + opens GitHub draft PRs; humans merge via GitHub. local_diff = LOCAL-ONLY: no git push, no PRs — branches/merges stay local and gates review a local diff posted on the ticket (enforced by the plugin's PreToolUse push-guard hook, hooks/guard-push.sh).",

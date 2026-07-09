@@ -42,6 +42,14 @@ Then read the board + git state and determine what's next, in this order:
    `${CLAUDE_PLUGIN_ROOT}/reference/merge-verify.md` §1 — follow that inline, don't
    skip it. At feature close-out it calls `reference/merge-verify.md` §2 and, after
    a human merge to the default branch, §3.
+5. **Truly idle** (the heartbeat found nothing: no epic in flight, nothing
+   eligible, no gates pending) **and `backlog.enabled`** → follow
+   `${CLAUDE_PLUGIN_ROOT}/reference/backlog.md`: with a live batch authorization
+   (`.autodev/.backlog_authorized`), advance the current backlog ticket or adopt
+   the next one; without one, fire the **entry gate ask** only when a
+   `backlog.ask_when` trigger applies (feature just completed, or
+   `backlog.idle_ticks` consecutive idle passes). Real work always preempts —
+   re-check steps 1–4 first on every pass.
 
 Do **one bounded unit of work** total across the above, then stop — this command is
 meant to be re-run (by a human or the timer), not to loop internally until the

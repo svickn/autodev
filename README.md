@@ -166,6 +166,13 @@ the first session migrate it, exactly as above.
 - **Preview at acceptance** (`preview.enabled`) — the human signs off on a **running
   product** (assembled feature branch launched hermetically + relaunch one-liner posted
   on the ticket), not just a diff and a report.
+- **Backlog drain (`backlog.enabled`, opt-in)** — when nothing else is in flight, the
+  engine can chew through the team's existing backlog/bug pile: you approve a **batch**
+  at an entry gate, then each ticket gets explore-the-code → a **context brief with
+  derived, testable criteria posted on the ticket** (the PRD substitute — vetoable
+  before a line is written) → build (bugs repro-test-first) → full QA → **its own PR**
+  for human review. Unfit tickets are commented + skipped, never guessed at; real
+  feature work always preempts; the team's priority order is never re-ranked.
 - **Glass-box observability** — status moves + per-tick comment logging + an
   operator digest + a per-feature stats record (`.autodev/metrics.jsonl`).
 - **Stateless heartbeat** passes · rate-limit auto-pause/resume · dead-man watchdog
@@ -182,6 +189,7 @@ the first session migrate it, exactly as above.
 | `intake.mode` | `cli` (in-session) **or** `linear` (ticket + comments, no terminal) | `cli` |
 | `intake.bugs` | `triage` (flag for a human) **or** `pipeline` (repro-test-first bug fixing) | `triage` |
 | `preview.enabled` | launch the assembled feature at the acceptance gate + post URL/relaunch cmd | `true` |
+| `backlog.enabled` | **backlog drain**: work the team's existing ticket pile during idle time — entry-gate approval per batch (`backlog.batch`), context-brief-instead-of-PRD per ticket, own PR each, Gate 2 never waived | `false` |
 | `tracker.hierarchy` | `issue` (feature on the board) **or** `project` (feature-as-Project, org-wide statuses) | `issue` |
 | `review.granularity` | `per_story` (review each) **or** `per_feature` (auto-merge to branch; review the whole) | `per_story` |
 | `review.delivery` | `draft_pr` (push + GitHub PRs) **or** `local_diff` (no GitHub — local branches + diffs only) | `draft_pr` |

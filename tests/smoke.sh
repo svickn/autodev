@@ -132,12 +132,12 @@ rm -rf "$T3"
 echo "config schema upgrade + history detection:"
 T5=$(mktemp -d); mkdir -p "$T5/.autodev" "$T5/scripts/autodev"; git -C "$T5" init -q
 echo old > "$T5/scripts/autodev/linear.mjs"
-jq 'del(.session_mode, .preview, .backup, .intake.bugs, .tracker.instance_label, .qa.visual_qa)
+jq 'del(.session_mode, .preview, .backup, .backlog, .intake.bugs, .tracker.instance_label, .qa.visual_qa)
     | .client_name="Hist Co" | .execution.max_lanes=2' "$PLUGIN/reference/deployment.example.json" > "$T5/.autodev/deployment.json"
 check "session hook flags HISTORY (artifacts+schema) with the update steps" bash -c \
   "echo '{\"cwd\":\"$T5\"}' | CLAUDE_PLUGIN_ROOT='$PLUGIN' '$PLUGIN/hooks/session-signal.sh' | jq -e '.hookSpecificOutput.additionalContext | contains(\"HISTORY detected (artifacts+schema)\") and contains(\"upgrade-config.sh\") and contains(\"in flight\")'"
 bash "$PLUGIN/scripts/upgrade-config.sh" "$T5" >/dev/null
-check "upgrade adds new keys with defaults" bash -c "jq -e '.session_mode==\"concierge\" and .preview.enabled==true and (.intake.bugs==\"triage\")' '$T5/.autodev/deployment.json'"
+check "upgrade adds new keys with defaults" bash -c "jq -e '.session_mode==\"concierge\" and .preview.enabled==true and (.intake.bugs==\"triage\") and (.backlog.enabled==false) and (.backlog.batch==3)' '$T5/.autodev/deployment.json'"
 check "operator values preserved" bash -c "jq -e '.execution.max_lanes==2 and .client_name==\"Hist Co\"' '$T5/.autodev/deployment.json'"
 check "instance label derived from client_name (not the example's)" bash -c "jq -e '.tracker.instance_label==\"autodev:hist-co\"' '$T5/.autodev/deployment.json'"
 check "upgrade idempotent" bash -c "bash '$PLUGIN/scripts/upgrade-config.sh' '$T5' | grep -q 'already current'"
