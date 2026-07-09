@@ -107,6 +107,28 @@ check "history recorded in issue file" bash -c "jq -e '.history | length >= 2' '
 check "board renders html" bash -c "cd '$TGT' && node '$TRK' board >/dev/null && test -f '$TGT/.autodev/board.html'"
 check "tracker doctor ok" bash -c "cd '$TGT' && node '$TRK' doctor | grep -q 'local board'"
 
+echo "vendored-install migration:"
+T3=$(mktemp -d); git -C "$T3" init -q
+mkdir -p "$T3/.claude/skills" "$T3/scripts/autodev" "$T3/.autodev/board" "$T3/.git/hooks"
+echo "# X — autoDev engine manual" > "$T3/.claude/autodev.md"
+echo "autoDev skill" > "$T3/.claude/skills/intake.md"
+echo "team skill, unrelated" > "$T3/.claude/skills/myteam.md"
+echo "old" > "$T3/scripts/autodev/linear.mjs"
+echo '{"_comment":"autoDev headless permissions","permissions":{}}' > "$T3/.claude/settings.json"
+echo '{"permissions":{"allow":["Bash(ls:*)"]}}' > "$T3/.claude/settings.json.pre-autodev"
+printf '#!/bin/sh\n# autoDev pre-push guard\nexit 1\n' > "$T3/.git/hooks/pre-push"
+echo '{"client_name":"X","tracker":{"kind":"local"}}' > "$T3/.autodev/deployment.json"
+echo '{"id":"AD-1"}' > "$T3/.autodev/board/AD-1.json"
+bash "$PLUGIN/scripts/migrate-vendored.sh" "$T3" >/dev/null 2>&1
+check "engine artifacts removed" bash -c "! test -f '$T3/.claude/autodev.md' && ! test -f '$T3/.claude/skills/intake.md' && ! test -d '$T3/scripts/autodev'"
+check "team skill survives" test -f "$T3/.claude/skills/myteam.md"
+check "team settings restored" grep -q "Bash(ls" "$T3/.claude/settings.json"
+check "our pre-push removed" bash -c "! test -f '$T3/.git/hooks/pre-push'"
+check "state preserved" bash -c "test -f '$T3/.autodev/deployment.json' && test -f '$T3/.autodev/board/AD-1.json'"
+check "backup populated" test -f "$T3/.autodev/backup-vendored/.claude/autodev.md"
+check "idempotent (2nd run finds nothing)" bash -c "bash '$PLUGIN/scripts/migrate-vendored.sh' '$T3' | grep -q 'no vendored install found'"
+rm -rf "$T3"
+
 echo
 if [[ $FAIL -eq 0 ]]; then echo "smoke: PASS"; else echo "smoke: FAIL"; fi
 exit $FAIL

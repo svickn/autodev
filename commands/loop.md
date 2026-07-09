@@ -2,6 +2,11 @@
 description: Advance autoDev by one bounded step — PRD, breakdown, a dev/QA heartbeat, or merge-verify, whichever is next.
 ---
 
+If `.claude/autodev.md` or `scripts/autodev/` exists here, this repo still carries a
+pre-plugin vendored install (its hooks/skills would double with the plugin's) — run
+`bash "${CLAUDE_PLUGIN_ROOT}/scripts/migrate-vendored.sh" .` before anything else and
+tell the operator to review + commit the removals.
+
 If `.autodev/deployment.json` doesn't exist in this repo, run the setup steps in
 `${CLAUDE_PLUGIN_ROOT}/commands/init.md` first, then continue below. If it exists but
 fails to parse as JSON, **stop and tell the operator** — point at the exact parse

@@ -4,6 +4,14 @@ description: Guided one-time setup — writes .autodev/deployment.json for this 
 
 Set up autoDev for **this repo**. Safe to re-run any time to reconfigure.
 
+0. **Vendored-install migration (always, first).** Run
+   `bash "${CLAUDE_PLUGIN_ROOT}/scripts/migrate-vendored.sh" .` — it detects a
+   pre-plugin install (committed `.claude/autodev.md`, engine skills,
+   `scripts/autodev/`, our old settings/hook artifacts), backs them up to
+   `.autodev/backup-vendored/`, restores anything of the team's the old installer
+   displaced, and preserves all state. No-op when nothing vendored exists. Without
+   this, enabling the plugin over an old install doubles every hook and skill. If it
+   migrated anything, tell the operator to review + commit the removals.
 1. Check for an existing `.autodev/deployment.json`. If present, tell the operator
    you're reconfiguring it (not creating fresh) and show a one-line summary of the
    current settings before continuing.
