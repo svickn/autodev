@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  autoDev timer template (macOS launchd) — Phase 3 only, install when going 24/7.
+  This file is intentionally still a hand-rendered TEMPLATE (unlike the rest of the
+  plugin): the 24/7 timer is opt-in and per-operator, so there's no command that
+  writes it automatically. See ops/launchd-timer.md for the full walkthrough
+  (render both a tick copy and a watchdog copy, substituting {{CLIENT_NAME}},
+  {{REPO_PATH}}, {{RUN_HOME}}, {{TICK_SECONDS}}/{{TICK_MIN}} by hand or with the
+  one-liner sed command shown there).
+
+  A laptop running this needs to stay awake (lid open + on power, or
+  `caffeinate -s`). For true 24/7, run on the always-on host.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.autodev.{{CLIENT_NAME}}.tick</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>{{REPO_PATH}}/scripts/autodev/devloop-tick.sh</string>
+  </array>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>RUN_HOME</key>
+    <string>{{RUN_HOME}}</string>
+    <key>PATH</key>
+    <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+  </dict>
+
+  <key>StartInterval</key>
+  <integer>{{TICK_SECONDS}}</integer>  <!-- {{TICK_MIN}} min × 60s -->
+
+  <key>RunAtLoad</key>
+  <true/>
+
+  <key>StandardOutPath</key>
+  <string>{{RUN_HOME}}/logs/launchd.out.log</string>
+  <key>StandardErrorPath</key>
+  <string>{{RUN_HOME}}/logs/launchd.err.log</string>
+</dict>
+</plist>

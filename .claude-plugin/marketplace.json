@@ -1,0 +1,14 @@
+{
+  "name": "autodev-marketplace",
+  "owner": {
+    "name": "Eric Schneider"
+  },
+  "description": "Marketplace for the autoDev plugin — an autonomous PM→dev→QA engine driven by Claude Code.",
+  "plugins": [
+    {
+      "name": "autodev",
+      "source": ".",
+      "description": "Autonomous PM→dev→QA engine driven by Claude Code — turns approved PRDs into QA'd, human-reviewable, shipped code through a board (a local git-native board or Linear), with two human gates. Nothing runs until you invoke /autodev:init, /autodev:new, or /autodev:loop."
+    }
+  ]
+}

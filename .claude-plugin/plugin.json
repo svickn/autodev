@@ -1,0 +1,10 @@
+{
+  "name": "autodev",
+  "description": "Autonomous PM→dev→QA engine driven by Claude Code — turns approved PRDs into QA'd, human-reviewable, shipped code through a board (a local git-native board or Linear), with two human gates. Nothing runs until you invoke /autodev:init, /autodev:new, or /autodev:loop.",
+  "version": "2.0.0",
+  "author": { "name": "Eric Schneider" },
+  "license": "Apache-2.0",
+  "homepage": "https://github.com/eschnei/autodev",
+  "repository": "https://github.com/eschnei/autodev",
+  "keywords": ["autonomous", "pm", "qa", "linear", "devloop", "agent"]
+}
