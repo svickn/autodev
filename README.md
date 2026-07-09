@@ -51,22 +51,73 @@ In a client repo, the **entire footprint** is `.autodev/deployment.json` plus
 runtime state created lazily on first use (`.autodev/board/`, `conventions.md`,
 `metrics.jsonl`, `logs/`). Nothing under `.claude/` is ever written.
 
-## Set up a new repo (rinse and repeat)
+## Onboarding
 
-```bash
-# in Claude Code, with the autodev plugin enabled and this repo as the workspace:
-/autodev:init      # guided: detects branch/commands from the repo, asks ~5 questions,
-                    # defaults to the zero-setup LOCAL board, writes .autodev/deployment.json
-/autodev:new        # capture the first piece of work
-/autodev:loop        # advance it — re-run any time; nothing runs on its own between calls
+**Prerequisites:** Claude Code with a claude.ai subscription login, plus `git`, `node`
+(18+), and `jq` on PATH (the tracker/doctor scripts use them).
+
+**1 · Enable the plugin — once per machine:**
+
+```
+/plugin marketplace add eschnei/autodev
+/plugin install autodev@autodev-marketplace
 ```
 
-No file copying, no session-restart dance, no trust/hook prompt beyond the plugin's
-own one-time enable. `.autodev/deployment.json` is the entire per-repo footprint;
-everything else the engine needs — the manual, the playbooks, the scripts — lives
-in the plugin and updates automatically when the plugin updates. BrainGrid,
-Linear, and branch-protection wiring are still manual, auth-bound steps —
-`/autodev:init` prints exactly what's left to do.
+Installing is the consent step — the plugin's hooks (session identity, push/docs
+guards) are active immediately, in every repo, with no per-workspace trust dance.
+
+**2 · Set up a repo:**
+
+```
+/autodev:init      # guided: detects branch/commands from the repo, asks ~5 questions
+                   # (incl. hands-on vs autopilot, concierge vs quiet sessions),
+                   # defaults to the zero-setup LOCAL board, writes .autodev/deployment.json
+/autodev:new       # capture the first piece of work
+/autodev:loop      # advance it — re-run any time; nothing runs between calls unless you
+                   # wire the 24/7 timer (ops/launchd-timer.md)
+```
+
+With the default `session_mode: concierge`, your next session simply opens with the
+assistant (Marj) greeting you with a status snapshot — from there it's plain English:
+"here's the PRD", "what's the status?", "grab AD-12". The commands are shortcuts, not
+requirements. `.autodev/deployment.json` is the entire per-repo footprint — commit it
+so the deployment travels with the repo. BrainGrid, Linear, and branch-protection
+wiring remain manual, auth-bound steps — `/autodev:init` prints exactly what's left.
+
+**Teammates:** anyone who pulls a configured repo just enables the plugin the same way
+(step 1) — the repo's `.autodev/deployment.json` does the rest. To get build updates on
+your phone, run `/remote-control` and pair the Claude mobile app (enable push in `/config`).
+
+**No-plugin alternative (vendored):** `./install.sh /path/to/repo` copies this same
+engine into the repo at `.autodev/engine/` — auditable and version-pinned in *your*
+git history; commands become `/autodev-init` · `/autodev-new` · `/autodev-loop`.
+Pick **one mode per repo** (the installer and the plugin each refuse to double up).
+
+## Updating
+
+**Plugin installs:** updates come from the marketplace — open `/plugin` → Manage
+plugins → update `autodev` (or turn on auto-update for the marketplace). New engine
+behavior applies to every configured repo on its next session; per-repo config is
+never touched by a plugin update.
+
+**A repo with autoDev history (pre-plugin install, or an old config):** enabling the
+plugin is the whole upgrade. The first session **detects the history** and updates
+in place — migrates old committed engine files (backed up to
+`.autodev/backup-vendored/`, team files restored), **upgrades the config schema**
+(new keys get defaults; every value you set is preserved), then reports what was
+already in flight (feature branches, board stories) — history continues, it doesn't
+restart. Review + commit the changes it makes. Manual equivalents:
+
+```bash
+bash "$PLUGIN_ROOT/scripts/migrate-vendored.sh" .   # old engine files → backup, team files restored
+bash "$PLUGIN_ROOT/scripts/upgrade-config.sh" .     # adds new config keys; your values win; prints what it added
+```
+
+**Vendored installs:** re-run `./install.sh /path/to/repo` from a current engine
+checkout — it upgrades `.autodev/engine/` in place (idempotent; your settings-file
+entries and config are preserved) and re-stamps the version so `doctor` can flag
+staleness. Switching a vendored repo to the plugin later: enable the plugin and let
+the first session migrate it, exactly as above.
 
 ## The non-negotiables
 
