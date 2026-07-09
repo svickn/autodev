@@ -34,9 +34,14 @@ p="$REPO/.claude/commands/devloop.md"
 [[ -f "$p" ]] && grep -qi "autoDev dev engine" "$p" && stash ".claude/commands/devloop.md"
 [[ -d "$REPO/.claude/commands" ]] && rmdir "$REPO/.claude/commands" 2>/dev/null || true
 
-# 2. The vendored scripts directory (entirely ours).
+# 2. The vendored scripts directory (entirely ours) — both generations.
 [[ -d "$REPO/scripts/autodev" ]] && { mkdir -p "$BK/scripts"; mv "$REPO/scripts/autodev" "$BK/scripts/autodev"; moved=$((moved+1)); note "→ backed up + removed: scripts/autodev/"; }
 [[ -d "$REPO/scripts" ]] && rmdir "$REPO/scripts" 2>/dev/null || true
+[[ -d "$REPO/.autodev/engine" ]] && { mkdir -p "$BK/.autodev"; mv "$REPO/.autodev/engine" "$BK/.autodev/engine"; moved=$((moved+1)); note "→ backed up + removed: .autodev/engine/ (new-style vendored engine)"; }
+for c in init new loop; do
+  p="$REPO/.claude/commands/autodev-$c.md"
+  [[ -f "$p" ]] && grep -qi "autodev" "$p" && stash ".claude/commands/autodev-$c.md"
+done
 
 # 3. settings.json: ours -> restore the team's backed-up one (or remove ours).
 S="$REPO/.claude/settings.json"
@@ -46,11 +51,12 @@ if [[ -f "$S" ]] && grep -q "autoDev headless permissions" "$S"; then
     mv "$S.pre-autodev" "$S"
     note "→ restored team settings from settings.json.pre-autodev"
   fi
-elif [[ -f "$S" ]] && command -v jq >/dev/null && jq -e '[.hooks.SessionStart[]?.hooks[]?.command // empty] | any(contains("scripts/autodev/"))' "$S" >/dev/null 2>&1; then
-  # team-authored settings that hand-merged our old hook: surgically drop just that hook
-  cp "$S" "$BK/.claude-settings.json.before-hook-removal" 2>/dev/null || { mkdir -p "$BK"; cp "$S" "$BK/.claude-settings.json.before-hook-removal"; }
-  jq '(.hooks.SessionStart // []) |= map(.hooks |= map(select((.command // "") | contains("scripts/autodev/") | not))) | .hooks.SessionStart |= map(select(.hooks | length > 0))' "$S" > "$S.tmp" && mv "$S.tmp" "$S"
-  moved=$((moved+1)); note "→ removed our old SessionStart hook from your team settings (original copied to backup)"
+elif [[ -f "$S" ]] && command -v jq >/dev/null && jq -e '[.hooks[]?[]?.hooks[]?.command // empty] | any(contains("scripts/autodev/") or contains(".autodev/engine"))' "$S" >/dev/null 2>&1; then
+  # team-authored settings carrying our hooks (old hand-merge, or a new-style vendored
+  # install's merge): surgically drop just OUR entries, keep everything of theirs
+  mkdir -p "$BK"; cp "$S" "$BK/.claude-settings.json.before-hook-removal"
+  jq '.hooks = ((.hooks // {}) | with_entries(.value |= (map(.hooks |= map(select((.command // "") | (contains("scripts/autodev/") or contains(".autodev/engine")) | not))) | map(select(.hooks | length > 0)))) | with_entries(select(.value | length > 0)))' "$S" > "$S.tmp" && mv "$S.tmp" "$S"
+  moved=$((moved+1)); note "→ removed our hooks from your settings.json (original copied to backup)"
 fi
 
 # 4. Our pre-push hook -> restore the chained team hook if we displaced one.

@@ -129,6 +129,27 @@ check "backup populated" test -f "$T3/.autodev/backup-vendored/.claude/autodev.m
 check "idempotent (2nd run finds nothing)" bash -c "bash '$PLUGIN/scripts/migrate-vendored.sh' '$T3' | grep -q 'no vendored install found'"
 rm -rf "$T3"
 
+echo "vendored install mode (install.sh — the plugin's sibling):"
+T4=$(mktemp -d); git -C "$T4" init -q; mkdir -p "$T4/.autodev" "$T4/.claude"
+echo '{"permissions":{"allow":["Bash(ls:*)"]},"hooks":{"SessionStart":[{"matcher":"startup","hooks":[{"type":"command","command":"echo team-hook"}]}]}}' > "$T4/.claude/settings.json"
+jq '.client_name="VendCo" | .tracker.kind="local"' "$PLUGIN/reference/deployment.example.json" > "$T4/.autodev/deployment.json"
+check "installs cleanly" bash "$PLUGIN/install.sh" "$T4"
+check "engine copied + paths rewritten (no plugin-root refs in commands)" bash -c "! grep -rl 'CLAUDE_PLUGIN_ROOT' '$T4/.claude/commands'"
+check "namespace rewritten (/autodev-*)" bash -c "! grep -rq '/autodev:' '$T4/.claude/commands'"
+check "team settings merged, not clobbered" bash -c "jq -e '.permissions.allow[0]==\"Bash(ls:*)\" and ([.hooks.SessionStart[].hooks[].command] | any(contains(\"team-hook\")))' '$T4/.claude/settings.json'"
+check "vendored concierge hook runs standalone" bash -c "echo '{\"cwd\":\"$T4\"}' | '$T4/.autodev/engine/hooks/session-signal.sh' | jq -e '.hookSpecificOutput.additionalContext | contains(\"You are\")'"
+check "vendored push guard denies main" bash -c "echo '{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git push origin main\"},\"cwd\":\"$T4\"}' | '$T4/.autodev/engine/hooks/guard-push.sh' | jq -e '.hookSpecificOutput.permissionDecision==\"deny\"'"
+check "engine stamped vendored + versioned" bash -c "jq -e '.engine.mode==\"vendored\" and .engine.version' '$T4/.autodev/deployment.json'"
+bash "$PLUGIN/install.sh" "$T4" >/dev/null 2>&1
+check "re-install idempotent (our hook once)" bash -c "jq -e '[.hooks.SessionStart[].hooks[].command | select(contains(\".autodev/engine\"))] | length == 1' '$T4/.claude/settings.json'"
+jq '.enabledPlugins={"autodev@x":true}' "$T4/.claude/settings.json" > "$T4/t" && mv "$T4/t" "$T4/.claude/settings.json"
+check "refuses when plugin enabled (one mode per repo)" bash -c "! bash '$PLUGIN/install.sh' '$T4'"
+jq 'del(.enabledPlugins)' "$T4/.claude/settings.json" > "$T4/t" && mv "$T4/t" "$T4/.claude/settings.json"
+bash "$PLUGIN/scripts/migrate-vendored.sh" "$T4" >/dev/null 2>&1
+check "migrate cleans NEW vendored layout too (engine dir + commands + hooks)" bash -c \
+  "! test -d '$T4/.autodev/engine' && ! test -f '$T4/.claude/commands/autodev-loop.md' && jq -e '[.hooks[]?[]?.hooks[]?.command // empty] | all(contains(\".autodev/engine\") | not)' '$T4/.claude/settings.json' && jq -e '[.hooks.SessionStart[].hooks[].command] | any(contains(\"team-hook\"))' '$T4/.claude/settings.json'"
+rm -rf "$T4"
+
 echo
 if [[ $FAIL -eq 0 ]]; then echo "smoke: PASS"; else echo "smoke: FAIL"; fi
 exit $FAIL

@@ -1,10 +1,17 @@
 # autoDev — an autonomous development engine, as a Claude Code plugin
 
 autoDev turns an idea into **QA'd, human-reviewable, shipped code** through a
-ticketing board (Linear), driven by Claude Code — mimicking a PM → dev team, made
-operable by non-technical people. It ships as a **Claude Code plugin**: enable it
-in any repo, run `/autodev:init`, and it drives — no install script, no config
-file to copy.
+ticketing board (Linear or a git-native local board), driven by Claude Code —
+mimicking a PM → dev team, made operable by non-technical people. It ships **two
+ways from the same engine** (pick ONE per repo):
+
+- **Plugin (default):** enable it, run `/autodev:init`, done — versioned updates from
+  the marketplace, hooks active on install, zero engine files in your repo.
+- **Vendored (`./install.sh <repo>`):** the same engine copied into the repo at
+  `.autodev/engine/` — auditable and pinned in *your* git history, for teams that
+  can't or won't run a third-party plugin. Commands become `/autodev-init` ·
+  `/autodev-new` · `/autodev-loop`; switching to the plugin later is automatic
+  (`/autodev:init` migrates vendored installs).
 
 > **Validated end-to-end** in a sandbox (a 15-story landing page built autonomously,
 > 144 unit + 24 e2e green) **and hardened by a 20-hour autonomous production run** —
@@ -63,15 +70,17 @@ Linear, and branch-protection wiring are still manual, auth-bound steps —
 
 ## The non-negotiables
 
-- **autoDev only drives when you tell it to — and stays in its own files.** Nothing runs
-  from plain conversation; only **`/autodev:init`**, **`/autodev:new`**, and
-  **`/autodev:loop`** do anything. The engine manual lives in the plugin's
-  **`reference/manual.md`** (never your `CLAUDE.md`) and is read explicitly by those
-  three commands — a one-line `SessionStart` hook is the only ambient behavior, and it
-  just tells you the commands exist. **Your `AGENTS.md` / `CLAUDE.md` stay the authority
-  on coding conventions** — autoDev reads and obeys them, and a `PreToolUse` hook denies
-  any Edit/Write to them; a convention change comes as a separate PR with rationale,
-  never a silent in-place edit.
+- **How much autoDev greets you is a toggle (`session_mode`) — and it stays in its own
+  files.** In a configured repo, **`concierge` (default)** gives you the full assistant:
+  it greets by name (Marj, unless renamed) with a status snapshot, routes plain English —
+  *you never need to remember a command* — and narrates builds ambiently. **`signal`**
+  keeps the engine dormant behind a one-line pointer until `/autodev:new` /
+  `/autodev:loop` (right for dual-use repos); **`silent`** says nothing. Unconfigured
+  repos always get nothing. Either way the engine manual lives in the plugin's
+  **`reference/manual.md`** (never your `CLAUDE.md`), and **your `AGENTS.md` /
+  `CLAUDE.md` stay the authority on coding conventions** — autoDev reads and obeys them,
+  and a `PreToolUse` hook denies any Edit/Write to them; a convention change comes as a
+  separate PR with rationale, never a silent in-place edit.
 - **The board is the only state machine** — every transition is a live status move
   (`tracker.mjs move …`); cards flow through every column so non-technical operators
   watch work progress in real time. A per-tick reconcile self-heals dropped moves.
@@ -118,6 +127,7 @@ Linear, and branch-protection wiring are still manual, auth-bound steps —
 | `tracker.kind` | `local` (git-native board — zero setup, no tokens/rate limits, `tracker.mjs board` view) **or** `linear` (the board is Linear, live) | `linear` (existing) · `local` recommended for new |
 | `tracker.mirror.linear` | local mode: also mirror to Linear async (queued + coalesced, off the critical path) | `false` |
 | `braingrid.enabled` | BrainGrid spec authoring **or** agent (PM + PjM) fallback | `true` |
+| `session_mode` | `concierge` (full Marj at session start — plain English, no commands) · `signal` (one-line pointer, dormant until invoked) · `silent` | `concierge` |
 | `intake.mode` | `cli` (in-session) **or** `linear` (ticket + comments, no terminal) | `cli` |
 | `intake.bugs` | `triage` (flag for a human) **or** `pipeline` (repro-test-first bug fixing) | `triage` |
 | `preview.enabled` | launch the assembled feature at the acceptance gate + post URL/relaunch cmd | `true` |
