@@ -4,8 +4,10 @@ description: Advance autoDev by one bounded step — PRD, breakdown, a dev/QA he
 
 If `.claude/autodev.md` or `scripts/autodev/` exists here, this repo still carries a
 pre-plugin vendored install (its hooks/skills would double with the plugin's) — run
-`bash "${CLAUDE_PLUGIN_ROOT}/scripts/migrate-vendored.sh" .` before anything else and
-tell the operator to review + commit the removals.
+`bash "${CLAUDE_PLUGIN_ROOT}/scripts/migrate-vendored.sh" .` followed by
+`bash "${CLAUDE_PLUGIN_ROOT}/scripts/upgrade-config.sh" .` before anything else, tell
+the operator to review + commit the changes, and report what was already in flight
+(`feature/*` branches, board stories + stages) — history continues, it doesn't restart.
 
 If `.autodev/deployment.json` doesn't exist in this repo, run the setup steps in
 `${CLAUDE_PLUGIN_ROOT}/commands/init.md` first, then continue below. If it exists but

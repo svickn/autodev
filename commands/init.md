@@ -12,6 +12,11 @@ Set up autoDev for **this repo**. Safe to re-run any time to reconfigure.
    displaced, and preserves all state. No-op when nothing vendored exists. Without
    this, enabling the plugin over an old install doubles every hook and skill. If it
    migrated anything, tell the operator to review + commit the removals.
+   Then run `bash "${CLAUDE_PLUGIN_ROOT}/scripts/upgrade-config.sh" .` — it adds any
+   config keys the schema has grown since this repo was configured (defaults only;
+   operator values never change) and reports exactly what it added. After a migration,
+   also report what was already IN FLIGHT (`feature/*` branches, board stories + their
+   stages) — history continues, it doesn't restart.
 1. Check for an existing `.autodev/deployment.json`. If present, tell the operator
    you're reconfiguring it (not creating fresh) and show a one-line summary of the
    current settings before continuing.

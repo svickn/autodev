@@ -129,6 +129,23 @@ check "backup populated" test -f "$T3/.autodev/backup-vendored/.claude/autodev.m
 check "idempotent (2nd run finds nothing)" bash -c "bash '$PLUGIN/scripts/migrate-vendored.sh' '$T3' | grep -q 'no vendored install found'"
 rm -rf "$T3"
 
+echo "config schema upgrade + history detection:"
+T5=$(mktemp -d); mkdir -p "$T5/.autodev" "$T5/scripts/autodev"; git -C "$T5" init -q
+echo old > "$T5/scripts/autodev/linear.mjs"
+jq 'del(.session_mode, .preview, .backup, .intake.bugs, .tracker.instance_label, .qa.visual_qa)
+    | .client_name="Hist Co" | .execution.max_lanes=2' "$PLUGIN/reference/deployment.example.json" > "$T5/.autodev/deployment.json"
+check "session hook flags HISTORY (artifacts+schema) with the update steps" bash -c \
+  "echo '{\"cwd\":\"$T5\"}' | CLAUDE_PLUGIN_ROOT='$PLUGIN' '$PLUGIN/hooks/session-signal.sh' | jq -e '.hookSpecificOutput.additionalContext | contains(\"HISTORY detected (artifacts+schema)\") and contains(\"upgrade-config.sh\") and contains(\"in flight\")'"
+bash "$PLUGIN/scripts/upgrade-config.sh" "$T5" >/dev/null
+check "upgrade adds new keys with defaults" bash -c "jq -e '.session_mode==\"concierge\" and .preview.enabled==true and (.intake.bugs==\"triage\")' '$T5/.autodev/deployment.json'"
+check "operator values preserved" bash -c "jq -e '.execution.max_lanes==2 and .client_name==\"Hist Co\"' '$T5/.autodev/deployment.json'"
+check "instance label derived from client_name (not the example's)" bash -c "jq -e '.tracker.instance_label==\"autodev:hist-co\"' '$T5/.autodev/deployment.json'"
+check "upgrade idempotent" bash -c "bash '$PLUGIN/scripts/upgrade-config.sh' '$T5' | grep -q 'already current'"
+bash "$PLUGIN/scripts/migrate-vendored.sh" "$T5" >/dev/null 2>&1
+check "after update: session hook no longer flags history" bash -c \
+  "echo '{\"cwd\":\"$T5\"}' | CLAUDE_PLUGIN_ROOT='$PLUGIN' '$PLUGIN/hooks/session-signal.sh' | jq -e '.hookSpecificOutput.additionalContext | contains(\"HISTORY detected\") | not'"
+rm -rf "$T5"
+
 echo "vendored install mode (install.sh — the plugin's sibling):"
 T4=$(mktemp -d); git -C "$T4" init -q; mkdir -p "$T4/.autodev" "$T4/.claude"
 echo '{"permissions":{"allow":["Bash(ls:*)"]},"hooks":{"SessionStart":[{"matcher":"startup","hooks":[{"type":"command","command":"echo team-hook"}]}]}}' > "$T4/.claude/settings.json"

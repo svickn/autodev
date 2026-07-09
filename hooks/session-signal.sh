@@ -20,14 +20,32 @@ MODE=$(jq -r '.session_mode // "concierge"' "$CONFIG")
 CLIENT=$(jq -r '.client_name // "this deployment"' "$CONFIG")
 NAME=$(jq -r '.assistant_name // "Marj"' "$CONFIG")
 KIND=$(jq -r '.tracker.kind // "linear"' "$CONFIG")
+
+# autoDev HISTORY detection: a pre-plugin vendored install and/or a config that
+# predates the current schema means this repo should be updated before real work.
+HIST=""
+{ [[ -e "$CWD/.claude/autodev.md" || -d "$CWD/scripts/autodev" || -d "$CWD/.autodev/engine" ]]; } && HIST="artifacts"
+if [[ "$(jq -r 'has("session_mode")' "$CONFIG")" == "false" ]]; then HIST="${HIST:+$HIST+}schema"; fi
 COUNT_TXT=""
 if [[ "$KIND" == "local" ]]; then
   N=$(find "$CWD/.autodev/board" -maxdepth 1 -name '*.json' ! -name '_*' ! -name '.*' 2>/dev/null | wc -l | tr -d ' ')
   COUNT_TXT=" — ${N:-0} stories on the board"
 fi
 
+HIST_TXT=""
+if [[ -n "$HIST" ]]; then
+  HIST_TXT=" ⚠ autoDev HISTORY detected ($HIST): this repo has a pre-plugin install and/or an
+older config schema. UPDATE FIRST, before any other work: run
+\`bash \"\${CLAUDE_PLUGIN_ROOT}/scripts/migrate-vendored.sh\" .\` then
+\`bash \"\${CLAUDE_PLUGIN_ROOT}/scripts/upgrade-config.sh\" .\` — both idempotent, state
+and operator settings preserved. Then report what was already in flight (feature/*
+branches, board stories and their stages) so the operator knows exactly where the
+deployment stands — history continues, it doesn't restart. Have the operator review +
+commit the changes."
+fi
+
 if [[ "$MODE" == "signal" ]]; then
-  MSG="⚙️ autoDev is configured here (${CLIENT}${COUNT_TXT}). Run \`/autodev:loop\` to continue, or \`/autodev:new\` to add work."
+  MSG="⚙️ autoDev is configured here (${CLIENT}${COUNT_TXT}). Run \`/autodev:loop\` to continue, or \`/autodev:new\` to add work.${HIST_TXT}"
   jq -n --arg c "$MSG" '{hookSpecificOutput: {hookEventName: "SessionStart", additionalContext: $c}}'
   exit 0
 fi
@@ -43,6 +61,7 @@ The commands /autodev:new and /autodev:loop exist as power-user shortcuts — th
 never needs to remember them. WORKFLOW is governed by the manual below; HOW CODE IS WRITTEN
 is governed by the team's AGENTS.md/CLAUDE.md (read-only) + the conventions below.
 (To make sessions quieter, set session_mode: \"signal\" or \"silent\" in .autodev/deployment.json.)
+${HIST_TXT}
 "
 CTX="$CTX"$'\n'"===== BEGIN reference/manual.md — operating manual (authoritative for WORKFLOW) ====="$'\n'
 if [[ -f "$MANUAL" ]]; then CTX="$CTX$(cat "$MANUAL")"$'\n'; else CTX="$CTX(manual not found at $MANUAL)"$'\n'; fi
