@@ -29,12 +29,23 @@ echo $$ > "$LOCK"
 trap 'rm -f "$LOCK"' EXIT
 touch "$RUN_HOME/heartbeat"          # prove the runner is alive (even while paused)
 
-# --- rate-limit gate: if a reset time is recorded and still ahead, no-op ---
+# --- rate-limit gate: while paused, PROBE instead of trusting a recorded reset time.
+# A refused call returns instantly and costs nothing; a successful one is ground truth
+# that the limit lifted — so the engine resumes within ONE tick of Claude Code coming
+# back, instead of overshooting a guessed timestamp (reset-time fields vary across CLI
+# versions, and the old 1h-fallback routinely waited long past the actual reset).
 PAUSE="$RUN_HOME/rate-limited-until"
 if [[ -f "$PAUSE" ]]; then
-  now=$(date +%s); until=$(cat "$PAUSE" 2>/dev/null || echo 0)
-  if [[ "$now" -lt "$until" ]]; then exit 0; fi
-  rm -f "$PAUSE"; "$(dirname "$0")/notify.sh" "$REPO" resumed
+  if PROBE=$(claude -p "reply with exactly: ok" --output-format json 2>/dev/null) \
+     && [[ -n "$PROBE" ]] \
+     && ! echo "$PROBE" | jq -e '.is_error == true' >/dev/null 2>&1; then
+    rm -f "$PAUSE"
+    "$(dirname "$0")/notify.sh" "$REPO" resumed
+    # fall through — run the full tick right now, don't waste the interval
+  else
+    touch "$PAUSE"                     # still limited; mtime records the last probe
+    exit 0
+  fi
 fi
 
 # --- build the headless allowlist from THIS repo's config; never written to disk ---
@@ -64,14 +75,14 @@ cd "$REPO" || exit 1
 OUT=$(claude -p "/autodev:loop" --output-format json "${ALLOW[@]}" 2>>"$RUN_HOME/logs/err.log")
 echo "$OUT" >> "$RUN_HOME/logs/$(date +%F).jsonl"
 
-# --- detect a usage-limit result and record the reset time ---
-# NOTE: confirm the exact field against the installed Claude Code version.
+# --- detect a usage-limit result and enter probe-paused mode ---
+# The pause file's EXISTENCE is what matters (each tick probes and resumes the moment
+# a call succeeds); any reset time we can parse is informational, for the notify only.
 if echo "$OUT" | jq -e '.is_error and (.result // "" | ascii_downcase
       | test("usage limit|rate limit"))' >/dev/null 2>&1; then
   reset=$(echo "$OUT" | jq -r '.reset_at_epoch // empty' 2>/dev/null)
-  [[ -z "$reset" ]] && reset=$(( $(date +%s) + 3600 ))   # fallback: back off 1h
-  echo "$reset" > "$PAUSE"
-  "$(dirname "$0")/notify.sh" "$REPO" limited "$reset"
+  echo "${reset:-unknown}" > "$PAUSE"
+  "$(dirname "$0")/notify.sh" "$REPO" limited "${reset:-}"
 fi
 
 # --- operator digest (B4): cheap, self-gates on reporting.cadence; no-op if off/not-due ---

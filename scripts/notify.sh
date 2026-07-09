@@ -24,8 +24,11 @@ log() { echo "$(ts) [$KIND] $*" >> "$LOG"; }
 
 case "$KIND" in
   limited)
-    when=$(date -r "${3:-0}" "+%H:%M" 2>/dev/null || echo "soon")
-    TITLE="⏳ autoDev rate-limited — auto-resuming at ${when}. No action needed." ;;
+    if [[ -n "${3:-}" ]] && when=$(date -r "$3" "+%H:%M" 2>/dev/null); then
+      TITLE="⏳ autoDev rate-limited (reset ~${when}) — probing every tick; resumes within one tick of the limit lifting."
+    else
+      TITLE="⏳ autoDev rate-limited — probing every tick; resumes within one tick of the limit lifting."
+    fi ;;
   resumed)
     TITLE="▶️ autoDev resumed after a rate-limit pause." ;;
   stalled)
