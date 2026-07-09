@@ -19,6 +19,10 @@ Set up autoDev for **this repo**. Safe to re-run any time to reconfigure.
    default, accept a bare Enter to take it):
    - Deployment name (`client_name`) — default: the repo's directory name.
    - Assistant name (`assistant_name`) — default: `"Marj"`.
+   - Session greeting (`session_mode`) — default `"concierge"` (the assistant greets
+     as the concierge and drives from plain English — no commands to remember); offer
+     `"signal"` (one-line pointer, dormant until `/autodev:loop`) for repos where
+     autoDev shares the space with normal dev work, or `"silent"`.
    - Default branch — default: detected above.
    - Test command (`commands.test`) — default: detected above, else ask directly.
    - Install / lint / build / run commands (`commands.install` / `commands.lint` /

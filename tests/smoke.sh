@@ -66,9 +66,16 @@ bash "$PLUGIN/scripts/write-identity-pointer.sh" "$T2" >/dev/null 2>&1
 check "our stale pointer is replaced (not treated as a team file)" grep -q "autoDev POINTER" "$T2/.claude/CLAUDE.md"
 rm -rf "$T2"
 
-echo "session-signal hook (one line, only when configured):"
-check "emits a short line naming both commands" bash -c \
+echo "session engagement (session_mode: concierge | signal | silent):"
+check "concierge (default): full identity + manual + conventions injected" bash -c \
+  "echo '{\"cwd\":\"$TGT\"}' | CLAUDE_PLUGIN_ROOT='$PLUGIN' '$PLUGIN/hooks/session-signal.sh' | jq -e '.hookSpecificOutput.additionalContext | contains(\"You are\") and contains(\"concierge\") and contains(\"Non-negotiable\")'"
+jq '.session_mode="signal"' "$TGT/.autodev/deployment.json" > "$TGT/.autodev/t" && mv "$TGT/.autodev/t" "$TGT/.autodev/deployment.json"
+check "signal: one short line naming both commands" bash -c \
   "echo '{\"cwd\":\"$TGT\"}' | '$PLUGIN/hooks/session-signal.sh' | jq -e '.hookSpecificOutput.additionalContext | contains(\"/autodev:loop\") and contains(\"/autodev:new\") and (length < 200)'"
+jq '.session_mode="silent"' "$TGT/.autodev/deployment.json" > "$TGT/.autodev/t" && mv "$TGT/.autodev/t" "$TGT/.autodev/deployment.json"
+check "silent: nothing" bash -c \
+  "test -z \"\$(echo '{\"cwd\":\"$TGT\"}' | '$PLUGIN/hooks/session-signal.sh')\""
+jq 'del(.session_mode)' "$TGT/.autodev/deployment.json" > "$TGT/.autodev/t" && mv "$TGT/.autodev/t" "$TGT/.autodev/deployment.json"
 UNCONF=$(mktemp -d)
 check "silent when unconfigured" bash -c \
   "test -z \"\$(echo '{\"cwd\":\"$UNCONF\"}' | '$PLUGIN/hooks/session-signal.sh')\""
