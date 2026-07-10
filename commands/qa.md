@@ -17,6 +17,5 @@ wireframes via `node "${CLAUDE_PLUGIN_ROOT}/scripts/tracker.mjs" show <issue>` /
 `list-comments <issue>`, then follow
 `${CLAUDE_PLUGIN_ROOT}/reference/deep-qa.md` step by step.
 
-Two boundaries the playbook enforces and this command never overrides: the report
-**feeds Gate 2 — it never passes one** (no merge, no approve, no moving a ticket
-across a human gate), and **hermetic first** — nothing runs against production.
+The playbook's two boundaries — the report **feeds Gate 2, never passes one**, and
+**hermetic first** — are absolute; this command never overrides them.
