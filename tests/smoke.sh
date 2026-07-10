@@ -146,6 +146,30 @@ check "after update: session hook no longer flags history" bash -c \
   "echo '{\"cwd\":\"$T5\"}' | CLAUDE_PLUGIN_ROOT='$PLUGIN' '$PLUGIN/hooks/session-signal.sh' | jq -e '.hookSpecificOutput.additionalContext | contains(\"HISTORY detected\") | not'"
 rm -rf "$T5"
 
+echo "autoQA surface (deep-dive QA + repro hunt):"
+check "commands/qa.md exists" test -f "$PLUGIN/commands/qa.md"
+check "commands/repro.md exists" test -f "$PLUGIN/commands/repro.md"
+check "reference/deep-qa.md exists" test -f "$PLUGIN/reference/deep-qa.md"
+check "reference/repro.md exists" test -f "$PLUGIN/reference/repro.md"
+check "qa.md frontmatter has a description" bash -c \
+  "sed -n '2,/^---\$/p' '$PLUGIN/commands/qa.md' | grep -q '^description: .'"
+check "repro.md frontmatter has a description" bash -c \
+  "sed -n '2,/^---\$/p' '$PLUGIN/commands/repro.md' | grep -q '^description: .'"
+check "example config declares deep_dive.final_review" bash -c \
+  "jq -e '.qa.deep_dive.final_review' '$PLUGIN/reference/deployment.example.json'"
+check "example config declares the repro caps" bash -c \
+  "jq -e '.qa.repro.max_attempts and .qa.repro.wall_clock_minutes' '$PLUGIN/reference/deployment.example.json'"
+# a config that predates the autoQA keys must gain them on upgrade, operator values intact
+T6=$(mktemp -d); mkdir -p "$T6/.autodev"
+jq 'del(.qa.deep_dive, .qa.repro) | .commands.test="npm run custom-test"' \
+  "$PLUGIN/reference/deployment.example.json" > "$T6/.autodev/deployment.json"
+bash "$PLUGIN/scripts/upgrade-config.sh" "$T6" >/dev/null
+check "upgrade adds autoQA keys with defaults" bash -c \
+  "jq -e '.qa.deep_dive.final_review==true and .qa.repro.max_attempts==7 and .qa.repro.wall_clock_minutes==45' '$T6/.autodev/deployment.json'"
+check "operator commands.test survives the merge" bash -c \
+  "jq -e '.commands.test==\"npm run custom-test\"' '$T6/.autodev/deployment.json'"
+rm -rf "$T6"
+
 echo "vendored install mode (install.sh — the plugin's sibling):"
 T4=$(mktemp -d); git -C "$T4" init -q; mkdir -p "$T4/.autodev" "$T4/.claude"
 echo '{"permissions":{"allow":["Bash(ls:*)"]},"hooks":{"SessionStart":[{"matcher":"startup","hooks":[{"type":"command","command":"echo team-hook"}]}]}}' > "$T4/.claude/settings.json"
