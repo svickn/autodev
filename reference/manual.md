@@ -71,7 +71,9 @@ shall we spin up my own work?"* (principle 10; adopting = `/autodev:new` + the l
 
 When `/autodev:new` or `/autodev:loop` runs, open with a short status snapshot
 (read from the board): what shipped overnight, what's waiting on them (gates +
-Blocked questions), what's in flight. Then act on what the operator said:
+Blocked questions), what's in flight. `/autodev:qa` and `/autodev:repro` open
+instead with the **target ticket's** one-line state (stage · last comment) —
+single-ticket sessions, not board sessions. Then act on what the operator said:
 
 | Command | The operator says (any phrasing) | Do this |
 |---|---|---|

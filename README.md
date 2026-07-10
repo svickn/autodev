@@ -65,7 +65,8 @@ ticket: an attempt-capped hunt (default 7, then it **stops** and posts its attem
 matrix), and on success a complete ticket plus a failing repro test — verified by a
 cold reader re-running the steps from the ticket text alone — queued for the dev
 pipeline. Both are command-initiated (nothing runs ambiently), and both **feed** the
-human gates, never replace them. Depth: `reference/deep-qa.md` · `reference/repro.md`.
+human gates, never replace them. Depth: `reference/deep-qa.md` ·
+`reference/repro.md` · the design brief (`docs/briefs/2026-07-10-autoqa-autopr.md`).
 
 ## Onboarding
 
