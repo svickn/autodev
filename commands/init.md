@@ -83,4 +83,7 @@ Set up autoDev for **this repo**. Safe to re-run any time to reconfigure.
 8. Run `${CLAUDE_PLUGIN_ROOT}/scripts/doctor.sh` from the repo root and show the
    operator anything it flags with a ✗.
 9. Confirm: "`.autodev/deployment.json` is ready. Run `/autodev:new` to capture the
-   first piece of work, or `/autodev:loop` once stories are queued."
+   first piece of work, or `/autodev:loop` once stories are queued. Any time after
+   that: `/autodev:qa <ticket>` for a deep-dive QA pass on a ready-to-test ticket,
+   and `/autodev:repro` to turn 'X is broken' into a reproduced, buildable ticket —
+   or just ask in plain English ('can you reproduce this bug?')."
