@@ -16,11 +16,9 @@ the operator just described: `$ARGUMENTS` if given inline (a description, or an
 existing issue id to hunt), otherwise ask what's broken — a vague report is fine;
 turning vague into reproducible is this command's whole job.
 
-Scope guard: this command **reproduces**; it never fixes. The deliverable is either
-a complete, cold-reader-verified ticket (plus a failing repro test on a branch)
-handed to the dev pipeline, or a documented attempted matrix for the human. If the
-operator asks for the fix too, point them at `/autodev:loop` — the handed-off
-ticket is already queued for it.
+Scope guard: this command **reproduces**; it never fixes (the playbook's header
+owns the deliverable contract). If the operator asks for the fix too, point them
+at `/autodev:loop` — the handed-off ticket is already queued for it.
 
 For coding conventions (the repro test is code), obey any team-authored
 `AGENTS.md` / `CLAUDE.md` (authoritative) plus `.autodev/conventions.md`; never edit
