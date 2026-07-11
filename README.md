@@ -254,8 +254,17 @@ config. (`braingrid setup cursor` / `openclaw` exist too, but autoDev uses Claud
 ## Agent roster (agency-agents)
 
 The engine routes work to specialist personas from **[agency-agents](https://github.com/msitarzewski/agency-agents)**
-by [@msitarzewski](https://github.com/msitarzewski) (MIT). autoDev does **not** bundle
-them — install them into `~/.claude/agents/` from that repo; routing lives in
+by [@msitarzewski](https://github.com/msitarzewski) (MIT). autoDev doesn't bundle
+them — it **installs them on demand**: before a persona is spawned,
+`scripts/ensure-personas.sh` resolves the deployment's roster against
+`~/.claude/agents/` and downloads **only what's missing, only what this
+deployment's config actually routes to**, from a **pinned ref** of the library
+(`personas.library.ref` — bump it deliberately). Already have the library, or your
+own agents under the same names? Nothing is touched. Air-gapped, or a no-third-party
+policy? Set `personas.auto_install: false` — no network, ever; anything unresolved
+simply runs as `personas.fallback` (default `general-purpose`, built into Claude
+Code), so **specialists are an upgrade, never a dependency**. `doctor.sh` shows the
+resolution state without downloading. Routing lives in
 `.autodev/deployment.json` (`personas.*`):
 
 | Role | Persona |

@@ -312,6 +312,14 @@ always preempts; the drain never re-ranks the team's priority order.
   (robust retry/backoff; resolves stage keys + identifiers from `.autodev/deployment.json`).
   **Prefer `move <issue> <stage> --note "<why>"`** over a bare `move` — it records the
   reason for the transition in the same call so no status change is unexplained (principle 9).
+- **Personas resolve-or-fallback (EVERY spawn site — devloop, deep-qa, repro, breakdown):**
+  before spawning a persona, run `bash ${CLAUDE_PLUGIN_ROOT}/scripts/ensure-personas.sh` —
+  it resolves the deployment's roster and (when `personas.auto_install`, default true)
+  downloads only the missing personas this config actually routes to, from the pinned
+  `personas.library.ref`. A persona still unresolved after it → spawn
+  **`personas.fallback`** (default `general-purpose`) instead and log `⚠️ persona <x>
+  unresolved — ran as <fallback>` on the story (principle 9). Specialists are an
+  upgrade, never a dependency; no playbook may hard-fail on a missing persona.
 - **Preflight before a run:** `${CLAUDE_PLUGIN_ROOT}/scripts/doctor.sh` — validates tools, token, and
   config status ids against live Linear. Fix any ✗ before proceeding.
 

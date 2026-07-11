@@ -228,6 +228,15 @@
 
   "personas": {
     "_note": "Which agent personas the engine may use (subagent slugs in ~/.claude/agents/), and how it routes work to the best one. Roster + routing are per-client because stacks differ. Specialist QA agents are from the agency-agents library.",
+    "auto_install": true,
+    "_auto_install_note": "CONSENT toggle for on-demand persona install. true (default): before spawning, scripts/ensure-personas.sh downloads any missing roster persona from personas.library — ONLY the ones this deployment's config actually routes to, nothing else. false (air-gapped / no-third-party policy): no network ever; unresolved personas run as personas.fallback instead. Doctor's --check never downloads in either mode.",
+    "fallback": "general-purpose",
+    "_fallback_note": "What to spawn when a persona is unresolved after ensure-personas.sh (missing + auto_install off, or fetch failed). general-purpose is built into Claude Code, so the engine is correct with ZERO agents installed — specialists are an upgrade, never a dependency. Every substitution is logged on the story (principle 9).",
+    "library": {
+      "repo": "msitarzewski/agency-agents",
+      "ref": "9f3e401ccd09aa0ee0ef8e015226d0647908e01e",
+      "_note": "Where auto-install fetches from (MIT — attribution in README ▸ Agent roster). ref is PINNED to a commit for supply-chain sanity; bump it deliberately, or set a branch name to track (not recommended)."
+    },
     "roster": [
       "product-manager",
       "project-manager-senior",
