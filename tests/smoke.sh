@@ -194,6 +194,10 @@ check "--check downloads nothing" bash -c "test \$(ls '$T7/agents' | wc -l) -eq 
 jq '.personas.auto_install=false' "$T7/.autodev/deployment.json" > "$T7/t" && mv "$T7/t" "$T7/.autodev/deployment.json"
 check "auto_install=false full run: no download side effects, still reports" bash -c \
   "AUTODEV_AGENTS_DIR='$T7/agents' bash '$PLUGIN/scripts/ensure-personas.sh' '$T7' | grep -q '2 unresolved' && test \$(ls '$T7/agents' | wc -l) -eq 2"
+# consent fails CLOSED: a mistyped string "false" must behave like false, never re-enable downloads
+jq '.personas.auto_install="false"' "$T7/.autodev/deployment.json" > "$T7/t" && mv "$T7/t" "$T7/.autodev/deployment.json"
+check "non-boolean auto_install fails closed (no download attempt)" bash -c \
+  "AUTODEV_AGENTS_DIR='$T7/agents' bash '$PLUGIN/scripts/ensure-personas.sh' '$T7' 2>/dev/null | grep -q '2 unresolved' && test \$(ls '$T7/agents' | wc -l) -eq 2"
 # a config predating the persona keys gains them on upgrade
 jq 'del(.personas.auto_install, .personas.fallback, .personas.library)' \
   "$PLUGIN/reference/deployment.example.json" > "$T7/.autodev/deployment.json"

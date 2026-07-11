@@ -143,7 +143,7 @@ if POUT=$(bash "$HERE/ensure-personas.sh" --check "$REPO" 2>&1); then
   PMISS=$(printf '%s\n' "$POUT" | grep -c "UNRESOLVED" || true)
   if [[ "$PMISS" -eq 0 ]]; then
     ok "$(printf '%s\n' "$POUT" | tail -1)"
-  elif [[ "$(jq -r 'if (.personas.auto_install|type)=="boolean" then .personas.auto_install else true end' "$CONFIG")" == "true" ]]; then
+  elif [[ "$(jq -r '.personas.auto_install | if type=="boolean" then tostring elif type=="null" then "true" else "false" end' "$CONFIG")" == "true" ]]; then
     warn "$PMISS persona(s) not installed — auto-installed at first run from $(jq -r '.personas.library.repo // "msitarzewski/agency-agents"' "$CONFIG") (doctor never downloads)"
     printf '%s\n' "$POUT" | grep "UNRESOLVED" | sed 's/^/    /'
   else

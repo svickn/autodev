@@ -18,10 +18,17 @@ REPO="${1:-$(git rev-parse --show-toplevel 2>/dev/null || echo .)}"
 CFG="$REPO/.autodev/deployment.json"
 [[ -f "$CFG" ]] || { echo "ensure-personas: no $CFG (run /autodev:init first)" >&2; exit 1; }
 command -v jq >/dev/null || { echo "ensure-personas: jq missing" >&2; exit 1; }
+jq empty "$CFG" 2>/dev/null || { echo "ensure-personas: $CFG is not valid JSON — fix it first" >&2; exit 1; }
 
 AGENTS_DIR="${AUTODEV_AGENTS_DIR:-$HOME/.claude/agents}"
-# NOT `// true` — jq's // treats an explicit false as absent and would re-enable downloads
-AUTO=$(jq -r 'if (.personas.auto_install|type)=="boolean" then .personas.auto_install else true end' "$CFG")
+# Consent tri-state: absent → true (documented default) · boolean → itself · anything
+# else FAILS CLOSED (a mistyped "false" string must never re-enable the network).
+# NOT `// true` — jq's // also treats an explicit false as absent.
+AUTO=$(jq -r '.personas.auto_install | if type=="boolean" then tostring elif type=="null" then "true" else "invalid" end' "$CFG")
+if [[ "$AUTO" == "invalid" ]]; then
+  echo "ensure-personas: personas.auto_install is not a boolean — treating as false (consent fails closed)" >&2
+  AUTO="false"
+fi
 FALLBACK=$(jq -r '.personas.fallback // "general-purpose"' "$CFG")
 LIB_REPO=$(jq -r '.personas.library.repo // "msitarzewski/agency-agents"' "$CFG")
 LIB_REF=$(jq -r '.personas.library.ref // "main"' "$CFG")
@@ -41,9 +48,16 @@ NEEDED=$(jq -r '
   | map(select(type=="string" and . != "")) | unique | .[]' "$CFG")
 [[ -n "$NEEDED" ]] || { echo "ensure-personas: nothing to resolve (empty personas config)"; exit 0; }
 
+# library divisions — anchors the fuzzy match so "architect" can't claim backend-architect.md
+DIVS='academic|design|engineering|gis|government|marketing|product|project-management|sales|specialized|testing'
 resolved() { # bare filename, or the library's division-prefixed one
   [[ -f "$AGENTS_DIR/$1.md" ]] && return 0
-  compgen -G "$AGENTS_DIR/*-$1.md" >/dev/null 2>&1
+  local f
+  for f in "$AGENTS_DIR"/*-"$1".md; do
+    [[ -e "$f" ]] || break
+    [[ "$(basename "$f")" =~ ^($DIVS)-$1\.md$ ]] && return 0
+  done
+  return 1
 }
 
 TREE=""   # one tree fetch per run, only when the first download needs it
@@ -57,21 +71,28 @@ tree() {
 n_inst=0 n_dl=0 n_un=0
 UNRES=""
 while IFS= read -r slug; do
+  if [[ ! "$slug" =~ ^[a-z0-9-]+$ ]]; then # slugs are data for regexes/URLs — reject anything else
+    miss "$slug INVALID (slugs are [a-z0-9-]) — engine will run it as $FALLBACK"
+    n_un=$((n_un+1)); UNRES+="$slug "; continue
+  fi
   if [[ "$slug" == "general-purpose" ]]; then ok "$slug (built-in)"; n_inst=$((n_inst+1)); continue; fi
   if resolved "$slug"; then ok "$slug"; n_inst=$((n_inst+1)); continue; fi
   if [[ $CHECK -eq 1 || "$AUTO" != "true" ]]; then
     miss "$slug UNRESOLVED — engine will run it as $FALLBACK"
     n_un=$((n_un+1)); UNRES+="$slug "; continue
   fi
+  # library layout is <division>/<division>-<slug>.md — require dirname/basename agreement
   path=""
-  tree && path=$(printf '%s\n' "$TREE" | grep -E -m1 "(^|/)([a-z0-9-]+-)?$slug\.md$" || true)
+  tree && path=$(printf '%s\n' "$TREE" | awk -F/ -v s="$slug" \
+    'NF==2 && $2==$1"-"s".md"{print;exit} NF==1 && $1==s".md"{print;exit}')
   if [[ -n "$path" ]]; then
     mkdir -p "$AGENTS_DIR"
     dest="$AGENTS_DIR/$(basename "$path")"
-    if curl -fsS --max-time 30 "https://raw.githubusercontent.com/$LIB_REPO/$LIB_REF/$path" -o "$dest" && [[ -s "$dest" ]]; then
+    if curl -fsS --max-time 30 "https://raw.githubusercontent.com/$LIB_REPO/$LIB_REF/$path" -o "$dest.tmp" && [[ -s "$dest.tmp" ]]; then
+      mv "$dest.tmp" "$dest" # atomic — a concurrent run never sees a half-written file
       got "$slug downloaded ($(basename "$path") @ ${LIB_REF:0:9})"; n_dl=$((n_dl+1)); continue
     fi
-    rm -f "$dest"
+    rm -f "$dest.tmp"
   fi
   miss "$slug UNRESOLVED (not in library / fetch failed) — engine will run it as $FALLBACK"
   n_un=$((n_un+1)); UNRES+="$slug "
