@@ -61,14 +61,14 @@ ticket.
 
 Each call advances the work by one step. **The first loop drafts the spec (a PRD —
 product requirements document) and then stops, waiting for you.** That pause is
-Gate 1 — the summary appears **right in the chat** (and on the ticket), and nothing
-gets built until you've typed **"approved"** in that same chat (or told it what to
-change; moving the card on the board works too). After you approve, keep running
+Gate 1 — the summary appears **right in the chat**, and nothing gets built until
+you've typed **"approved"** in that same chat (or told it what to change; on a
+Linear board, moving the card works too). After you approve, keep running
 `/autodev:loop` — it breaks the spec into tickets and builds them one by one. A
 small three-ticket feature is a handful of calls: one for the spec, one for the
-breakdown, then roughly one to three per ticket. Watch the board anytime: cards move
-across columns (`.autodev/board.html` — regenerated each time the board changes;
-open it in a browser, or just ask "what's the status?").
+breakdown, then roughly one to three per ticket. Watch the board anytime: ask
+"what's the status?", or open `.autodev/board.html` in a browser — it's refreshed
+every time the board is viewed or queried, so re-ask to re-render it.
 
 **5 · Review the result (Gate 2).** You never need to read the code. In hands-on
 mode each finished ticket arrives as a GitHub *draft* PR with the QA reports and a
@@ -110,8 +110,9 @@ answer about what that means:
   Prefer nothing on GitHub at all? Set `review.delivery: local_diff` — local
   branches and diffs only, pushes hard-blocked.
 - **No telemetry.** The engine never phones home. Its only network calls are for
-  tools you configure (your Linear workspace, your Slack webhook, BrainGrid if you
-  install it) plus one consent-gated download: specialist agent personas fetched
+  tools you configure (GitHub pushes/PRs per your delivery mode, your Linear
+  workspace, your Slack webhook, BrainGrid if you install it) plus one
+  consent-gated download: specialist agent personas fetched
   from a version-pinned public library (details in
   [Agent roster](#agent-roster-agency-agents); `personas.auto_install: false` turns
   the download off — anything not already installed then runs as the built-in
@@ -138,8 +139,10 @@ and comments with **no terminal at all** (`intake.mode: linear`).
 Each ticket is built by a specialist dev agent in its own git worktree, must ship
 tests with its change, then gets QA'd by **fresh agents that didn't write the code**
 — three angles (does it meet the criteria · can it be broken · did anything else
-regress), looping dev ↔ QA until it passes, with a stuck-detector that escalates to
-you rather than guessing. After merges, a clean-room verify re-builds from scratch
+regress), looping dev ↔ QA until it passes. Missing or ambiguous information at
+*any* stage means it asks you (or parks the ticket as Blocked with the question) —
+it never picks an interpretation and ships it; a stuck-detector escalates
+no-progress loops the same way. After merges, a clean-room verify re-builds from scratch
 and auto-reverts on failure. The full rules live in `reference/manual.md` — the
 engine's operating manual.
 
@@ -235,8 +238,10 @@ idempotent, config preserved, and the engine version is re-stamped into
 - **Tests ship with every change; QA runs for real** — three fresh-agent angles
   (conformance · adversarial · regression) on an executable environment; the
   live-browser check is advisory, never an auto-block.
-- **dev↔QA loops until it passes** — unbounded while making progress; a
-  stuck-detector escalates to a human on no-progress ("ask, don't invent").
+- **Ask, don't invent — at any stage.** Missing, ambiguous, or contradictory info
+  → the engine asks (live in-session, or via a Blocked ticket), never guesses.
+  dev↔QA loops are unbounded while making progress; a stuck-detector escalates
+  no-progress to a human the same way.
 - **Post-merge clean-room verify** — fresh checkout + clean install + integrated
   suites after every merge, auto-revert on fail, human prod sign-off at the end.
 - **Hermetic always** — QA and live runs never touch production services or creds;
@@ -343,8 +348,8 @@ in any repo, *Claude Code* is blocked from editing `AGENTS.md`/`CLAUDE.md` (your
 editor and terminal never are).
 
 **Does it phone home?**
-No telemetry. Network calls happen only for tools you configure (Linear, Slack,
-BrainGrid) plus the consent-gated persona download from a pinned ref —
+No telemetry. Network calls happen only for tools you configure (GitHub, Linear,
+Slack, BrainGrid) plus the consent-gated persona download from a pinned ref —
 `personas.auto_install: false` disables that too.
 
 **Can it merge to `main` or mess up my GitHub?**
