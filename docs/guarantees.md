@@ -55,27 +55,10 @@ everything from Linear tickets and comments with **no terminal at all**
   passes, rate-limit auto-pause/resume, and a dead-man watchdog with hung-tick
   recovery.
 
-## Toggles (preferred-optional, degrade gracefully)
+## Toggles
 
-| Toggle | Options | Default |
-|---|---|---|
-| `tracker.kind` | `local` (git-native board — zero setup, no tokens, `tracker.mjs board` view) **or** `linear` (the board is Linear, live) | `local` for new setups (init's default) |
-| `tracker.mirror.linear` | local mode: also mirror to Linear async (queued, off the critical path) | `false` |
-| `braingrid.enabled` | BrainGrid spec authoring **or** agent (PM + PjM) fallback | `true` (auto-falls-back if absent) |
-| `session_mode` | `concierge` (Marj greets, plain English drives) · `signal` (one-line pointer, dormant until invoked) · `silent` | `concierge` |
-| `intake.mode` | `cli` (in-session) **or** `linear` (tickets + comments, no terminal) | `cli` |
-| `intake.bugs` | `triage` (flag for a human) **or** `pipeline` (repro-test-first fixing) | `triage` |
-| `preview.enabled` | launch the assembled feature at acceptance + post URL/relaunch cmd | `true` |
-| `backlog.enabled` | idle-time backlog drain (entry-gated batches, own PR each) | `false` |
-| `tracker.hierarchy` | `issue` (feature as a board issue) **or** `project` (feature as a Linear Project) | `issue` |
-| `review.granularity` | `per_story` (review each ticket) **or** `per_feature` (auto-merge to the feature branch; review the whole) | `per_story` |
-| `review.delivery` | `draft_pr` (push + GitHub draft PRs) **or** `local_diff` (no GitHub — local branches + diffs, pushes blocked) | `draft_pr` |
-| `review.quality_review` | leanness/dedup pass over the assembled feature at close-out | `true` |
-| `backup.enabled` | WIP durability — push the feature branch to `backup.remote` after each story merge (never a PR; no-op under `local_diff`) | `true` |
-| `personas.auto_install` | download missing specialist personas on demand (pinned ref) **or** run everything as the fallback agent | `true` |
-| `execution.logging` | `quiet` (one line per action) · `normal` (checkpoint comments) · `verbose` (+ diffs) | `normal` |
-| `execution.incremental_breakdown` | whole feature at Gate 1 **or** per-milestone on demand | `false` |
-| `reporting.cadence` | operator digest: `off` · `hourly` · `<N>m` → log / slack / linear | `off` |
+The full toggle table lives in the [README](../README.md#toggles-preferred-optional-degrade-gracefully);
+every key is documented inline in `reference/deployment.example.json`.
 
 ## Agent roster (agency-agents)
 
