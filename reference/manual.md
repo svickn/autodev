@@ -28,14 +28,18 @@ introduce yourself and sign off as `assistant_name`. The operator talks to it
 in plain English; it turns approved PRDs into QA'd, human-reviewable code through
 the board, with two human gates.
 
-Two commands drive everything — **nothing runs from plain conversation alone.**
+Four commands drive everything — **nothing runs from plain conversation alone.**
 **`/autodev:new`** captures new work (feature, bug, brief, or a finished PRD).
 **`/autodev:loop`** advances whatever's next — PRD, breakdown, one dev/QA
 heartbeat, or merge-verify — based on live board state; re-run it to keep
-advancing. Both bootstrap `.autodev/deployment.json` automatically the first
-time (or run `/autodev:init` explicitly). The table below describes what each
-command does with what the operator just said — it is not a list of things
-that happen on their own.
+advancing. **`/autodev:qa`** runs deep-dive exploratory QA on one ticket
+(`reference/deep-qa.md`). **`/autodev:repro`** hunts a reproduction for a bug
+and hands the pipeline a complete, verified ticket (`reference/repro.md`). All
+of them bootstrap `.autodev/deployment.json` automatically the first time (or
+run `/autodev:init` explicitly). Plain English works too, but it is only ever a
+**router to these same commands** — a visible, auditable invocation, never a
+parallel code path. The table below describes what each command does with what
+the operator just said — it is not a list of things that happen on their own.
 
 ---
 
@@ -67,7 +71,9 @@ shall we spin up my own work?"* (principle 10; adopting = `/autodev:new` + the l
 
 When `/autodev:new` or `/autodev:loop` runs, open with a short status snapshot
 (read from the board): what shipped overnight, what's waiting on them (gates +
-Blocked questions), what's in flight. Then act on what the operator said:
+Blocked questions), what's in flight. `/autodev:qa` and `/autodev:repro` open
+instead with the **target ticket's** one-line state (stage · last comment) —
+single-ticket sessions, not board sessions. Then act on what the operator said:
 
 | Command | The operator says (any phrasing) | Do this |
 |---|---|---|
@@ -80,6 +86,8 @@ Blocked questions), what's in flight. Then act on what the operator said:
 | `/autodev:loop` | "The PRD looks good" / "approved" | Log **Gate 1** approval → move the epic → run breakdown (`reference/breakdown.md`) |
 | `/autodev:loop` | "Ticket X works" / "ticket X is broken because…" | Log the **Gate 2** verdict, move the issue, post their comment |
 | `/autodev:loop` | (no special phrasing) | Reconcile the board, then do the next bounded unit of work — see `reference/devloop.md` |
+| `/autodev:qa` | "QA ticket X deeply" / "test this thoroughly before I review" / "run through the flows on X" | **Deep-dive QA** (`reference/deep-qa.md`): plan posted to the ticket first, hermetic app up, every path walked with screenshots, evidence-backed report + independent countersign. Feeds Gate 2, never passes it. |
+| `/autodev:repro` | "X is broken — can you reproduce it?" / "chase this bug down" | **Repro hunt** (`reference/repro.md`): attempt-capped (`qa.repro.max_attempts`, default 7 — then STOP and post the attempted matrix). A cold-reader-verified success hands the pipeline a complete ticket + failing repro test (`route:bug` + `repro-first` + `ai-eligible`, Ready for AI Dev). Front-loads the reproduction `intake.bugs: pipeline` needs; under `triage` it runs only when the operator explicitly asks. |
 | — | "What's the status?" / "what do you need from me?" | Answer directly from the board (`tracker.mjs board`) — a plain read, no command required |
 | — | "Pause everything" | Explain how to disable the timer (see the 24/7 timer docs); does not touch the board |
 

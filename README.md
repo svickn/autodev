@@ -23,7 +23,7 @@ ways from the same engine** (pick ONE per repo):
 ## What you get
 
 autoDev ships as a **Claude Code plugin** — nothing is copied into your repo.
-Enabling it adds three commands and a couple of guardrail hooks; everything else
+Enabling it adds five commands and a couple of guardrail hooks; everything else
 (the engine manual, the per-stage playbooks, the scripts) lives inside the plugin
 package and is read at runtime via `${CLAUDE_PLUGIN_ROOT}`.
 
@@ -33,10 +33,12 @@ autodev/                              (the plugin package)
 ├── commands/
 │   ├── init.md                       # /autodev:init  — guided one-time setup, writes .autodev/deployment.json
 │   ├── new.md                        # /autodev:new   — the only way work enters the engine
-│   └── loop.md                       # /autodev:loop  — advance one bounded step (PRD → breakdown → dev/QA → merge-verify)
+│   ├── loop.md                       # /autodev:loop  — advance one bounded step (PRD → breakdown → dev/QA → merge-verify)
+│   ├── qa.md                         # /autodev:qa    — deep-dive exploratory QA on one ready-to-test ticket
+│   └── repro.md                      # /autodev:repro — reproduce a bug into a verified, buildable ticket
 ├── reference/                        # playbooks — read explicitly by the commands above; never auto-triggered
 │   ├── manual.md                     # engine manual: concierge routing, non-negotiables, toggles
-│   ├── intake.md · prd.md · breakdown.md · devloop.md · merge-verify.md · story-template.md
+│   ├── intake.md · prd.md · breakdown.md · devloop.md · deep-qa.md · repro.md · merge-verify.md · story-template.md
 │   └── deployment.example.json       # the full config schema, used by /autodev:init
 ├── scripts/                          # tracker.mjs · linear.mjs · report.mjs · doctor.sh · detect-conventions.sh ·
 │                                      # check-docs.sh · devloop-tick.sh · watchdog.sh · notify.sh ·
@@ -50,6 +52,21 @@ autodev/                              (the plugin package)
 In a client repo, the **entire footprint** is `.autodev/deployment.json` plus
 runtime state created lazily on first use (`.autodev/board/`, `conventions.md`,
 `metrics.jsonl`, `logs/`). Nothing under `.claude/` is ever written.
+
+### autoQA — deep QA and bug reproduction, on demand
+
+Two of those commands put the engine's QA machinery in your hands directly.
+**`/autodev:qa <ticket>`** takes a ready-to-test ticket and goes deep: posts a test
+plan, spins the app up hermetically, walks every path with screenshots, and writes an
+evidence-backed report — which a second, fresh agent audits adversarially
+(claim-to-evidence, coverage vs the plan, spot re-runs) and countersigns before it
+reaches you. **`/autodev:repro`** turns "X is broken" into a reproduced, buildable
+ticket: an attempt-capped hunt (default 7, then it **stops** and posts its attempted
+matrix), and on success a complete ticket plus a failing repro test — verified by a
+cold reader re-running the steps from the ticket text alone — queued for the dev
+pipeline. Both are command-initiated (nothing runs ambiently), and both **feed** the
+human gates, never replace them. Depth: `reference/deep-qa.md` ·
+`reference/repro.md` · the design brief (`docs/briefs/2026-07-10-autoqa-autopr.md`).
 
 ## Onboarding
 
@@ -75,11 +92,16 @@ guards) are active immediately, in every repo, with no per-workspace trust dance
 /autodev:new       # capture the first piece of work
 /autodev:loop      # advance it — re-run any time; nothing runs between calls unless you
                    # wire the 24/7 timer (ops/launchd-timer.md)
+/autodev:qa AD-12  # deep-dive QA a ticket that's ready to test — plan, evidence,
+                   # independently verified report posted for your review
+/autodev:repro     # turn "X is broken" into a reproduced, buildable ticket
+                   # (or a documented can't-reproduce) before a dev cycle is spent
 ```
 
 With the default `session_mode: concierge`, your next session simply opens with the
 assistant (Marj) greeting you with a status snapshot — from there it's plain English:
-"here's the PRD", "what's the status?", "grab AD-12". The commands are shortcuts, not
+"here's the PRD", "what's the status?", "grab AD-12", "QA AD-12 deeply", "can you
+reproduce this bug?". The commands are shortcuts, not
 requirements. `.autodev/deployment.json` is the entire per-repo footprint — commit it
 so the deployment travels with the repo. BrainGrid, Linear, and branch-protection
 wiring remain manual, auth-bound steps — `/autodev:init` prints exactly what's left.
@@ -125,8 +147,8 @@ the first session migrate it, exactly as above.
   files.** In a configured repo, **`concierge` (default)** gives you the full assistant:
   it greets by name (Marj, unless renamed) with a status snapshot, routes plain English —
   *you never need to remember a command* — and narrates builds ambiently. **`signal`**
-  keeps the engine dormant behind a one-line pointer until `/autodev:new` /
-  `/autodev:loop` (right for dual-use repos); **`silent`** says nothing. Unconfigured
+  keeps the engine dormant behind a one-line pointer until an `/autodev:*`
+  command (right for dual-use repos); **`silent`** says nothing. Unconfigured
   repos always get nothing. Either way the engine manual lives in the plugin's
   **`reference/manual.md`** (never your `CLAUDE.md`), and **your `AGENTS.md` /
   `CLAUDE.md` stay the authority on coding conventions** — autoDev reads and obeys them,
