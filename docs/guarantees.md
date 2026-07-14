@@ -10,9 +10,10 @@ step is a card moving through a column (New Request → PRD Review (H) → Ready
 Dev → AI Development → AI QA → Human Review (H) → Done, with Clarifying/Breakdown/
 Blocked columns alongside — "(H)" marks your moments), so you watch progress like
 any sprint board. The board is a zero-setup local one by default; flip
-`tracker.kind: linear` to use Linear live, including a mode where you drive
+`tracker.kind: linear` to use Linear live — including a mode where you drive
 everything from Linear tickets and comments with **no terminal at all**
-(`intake.mode: linear`).
+(`intake.mode: linear`) — or `tracker.kind: shortcut` to use Shortcut live
+(in-session intake; see `ops/shortcut-setup.md`).
 
 ## The non-negotiables
 
@@ -59,7 +60,7 @@ everything from Linear tickets and comments with **no terminal at all**
 
 | Toggle | Options | Default |
 |---|---|---|
-| `tracker.kind` | `local` (git-native board — zero setup, no tokens, `tracker.mjs board` view) **or** `linear` (the board is Linear, live) | `local` for new setups (init's default) |
+| `tracker.kind` | `local` (git-native board — zero setup, no tokens, `tracker.mjs board` view) · `linear` (the board is Linear, live) · `shortcut` (the board is Shortcut, live; cli intake) | `local` for new setups (init's default) |
 | `tracker.mirror.linear` | local mode: also mirror to Linear async (queued, off the critical path) | `false` |
 | `braingrid.enabled` | BrainGrid spec authoring **or** agent (PM + PjM) fallback | `true` (auto-falls-back if absent) |
 | `session_mode` | `concierge` (Marj greets, plain English drives) · `signal` (one-line pointer, dormant until invoked) · `silent` | `concierge` |

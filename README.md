@@ -80,8 +80,9 @@ then is QA'd by **fresh agents that didn't write the code** — three angles (me
 criteria · can it be broken · did anything regress), looping dev ↔ QA until green.
 Missing or ambiguous info at *any* stage → it asks you (or parks the ticket as
 Blocked), never guesses. After merges, a clean-room verify rebuilds from scratch and
-auto-reverts on failure. The board is local by default; Linear is optional, including
-a no-terminal mode driven entirely from tickets and comments.
+auto-reverts on failure. The board is local by default; Linear and Shortcut are
+optional (`tracker.kind`) — Linear adds a no-terminal mode driven entirely from
+tickets and comments.
 
 - **`/autodev:qa <ticket>`** — deep exploratory QA: posts a test plan, walks every
   path hermetically with screenshots, and writes an evidence-backed report that a
