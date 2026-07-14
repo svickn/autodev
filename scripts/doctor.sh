@@ -20,9 +20,15 @@ echo "autoDev doctor — $CONFIG"
 command -v jq >/dev/null && ok "jq" || bad "jq missing (brew install jq)"
 
 echo "tooling:"
-for t in node git gh claude; do
+for t in node git claude; do
   command -v "$t" >/dev/null && ok "$t" || bad "$t missing"
 done
+# gh only serves draft-PR delivery — a local_diff deployment never opens PRs or pushes
+if [[ "$(jq -r '.review.delivery // "draft_pr"' "$CONFIG")" == "local_diff" ]]; then
+  ok "gh not required (review.delivery=local_diff — no PRs, no pushes)"
+else
+  command -v gh >/dev/null && ok "gh" || bad "gh missing (draft_pr delivery opens GitHub PRs — brew install gh, or set review.delivery=local_diff)"
+fi
 command -v braingrid >/dev/null && ok "braingrid" || warn "braingrid missing — engine will use the agent PRD/breakdown fallback"
 
 echo "repo:"
