@@ -80,8 +80,9 @@ then is QA'd by **fresh agents that didn't write the code** — three angles (me
 criteria · can it be broken · did anything regress), looping dev ↔ QA until green.
 Missing or ambiguous info at *any* stage → it asks you (or parks the ticket as
 Blocked), never guesses. After merges, a clean-room verify rebuilds from scratch and
-auto-reverts on failure. The board is local by default; Linear is optional, including
-a no-terminal mode driven entirely from tickets and comments.
+auto-reverts on failure. The board is local by default; Linear and Shortcut are
+optional (`tracker.kind`) — Linear adds a no-terminal mode driven entirely from
+tickets and comments.
 
 - **`/autodev:qa <ticket>`** — deep exploratory QA: posts a test plan, walks every
   path hermetically with screenshots, and writes an evidence-backed report that a
@@ -101,13 +102,13 @@ Both feed the human gates, never replace them.
 | [agency-agents](https://github.com/msitarzewski/agency-agents) personas (MIT) | specialist dev/QA agents | auto-installed on demand from a pinned ref (`personas.auto_install`); otherwise runs on the built-in fallback agent |
 | Playwright (MCP) | screenshots for live/visual QA and bug repro | `/autodev:qa` / `/autodev:repro` offer to install it (with your consent); visual checks flag instead of block |
 | [BrainGrid CLI](https://braingrid.ai) | spec authoring | agents author the PRD/breakdown instead — nothing breaks |
-| Linear | `tracker.kind: linear` or mirroring | the zero-setup local board (default) |
+| Linear or Shortcut | `tracker.kind: linear` / `shortcut` | the zero-setup local board (default) |
 
 ## Toggles (preferred-optional, degrade gracefully)
 
 | Toggle | Options | Default |
 |---|---|---|
-| `tracker.kind` | `local` (git-native board — zero setup, no tokens, `tracker.mjs board` view) **or** `linear` (the board is Linear, live) | `local` for new setups (init's default) |
+| `tracker.kind` | `local` (git-native board — zero setup, no tokens, `tracker.mjs board` view) · `linear` (the board is Linear, live) · `shortcut` (the board is Shortcut, live; cli intake) | `local` for new setups (init's default) |
 | `tracker.mirror.linear` | local mode: also mirror to Linear async (queued, off the critical path) | `false` |
 | `braingrid.enabled` | BrainGrid spec authoring **or** agent (PM + PjM) fallback | `true` (auto-falls-back if absent) |
 | `session_mode` | `concierge` (Marj greets, plain English drives) · `signal` (one-line pointer, dormant until invoked) · `silent` | `concierge` |

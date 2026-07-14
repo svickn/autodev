@@ -170,6 +170,18 @@ check "operator commands.test survives the merge" bash -c \
   "jq -e '.commands.test==\"npm run custom-test\"' '$T6/.autodev/deployment.json'"
 rm -rf "$T6"
 
+echo "shortcut tracker (driver + schema, no network):"
+check "shortcut.mjs parses" node --check "$PLUGIN/scripts/shortcut.mjs"
+check "tracker.mjs parses" node --check "$PLUGIN/scripts/tracker.mjs"
+check "tracker.mjs dispatches kind=shortcut" bash -c \
+  "grep -q \"KIND === 'shortcut'\" '$PLUGIN/scripts/tracker.mjs' && grep -q 'shortcut.mjs' '$PLUGIN/scripts/tracker.mjs'"
+check "example config has the shortcut block" bash -c \
+  "jq -e '.tracker.shortcut.api_token_env==\"SHORTCUT_API_TOKEN\" and .tracker.shortcut.workflow_id and .tracker.shortcut.statuses' '$PLUGIN/reference/deployment.example.json'"
+# the engine's stage vocabulary must be identical across API trackers
+check "stage-key parity: shortcut statuses == linear statuses" bash -c \
+  "jq -e '(.tracker.statuses | keys) == (.tracker.shortcut.statuses | keys)' '$PLUGIN/reference/deployment.example.json'"
+check "ops/shortcut-setup.md exists" test -f "$PLUGIN/ops/shortcut-setup.md"
+
 echo "persona resolution (ensure-personas.sh — no network in any of these):"
 check "ensure-personas.sh parses" bash -n "$PLUGIN/scripts/ensure-personas.sh"
 check "example config declares auto_install / fallback / pinned library" bash -c \

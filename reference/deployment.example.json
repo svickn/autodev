@@ -24,7 +24,29 @@
 
   "tracker": {
     "kind": "linear",
-    "_kind_note": "WHERE the board (the only state machine) lives. All ops go through the facade ${CLAUDE_PLUGIN_ROOT}/scripts/tracker.mjs in both modes. 'local' = git-native board (.autodev/board/*.json): zero setup, no token, no rate limits, offline; view with 'tracker.mjs board' (text + board.html). 'linear' = the board IS Linear (live API; required for intake.mode=linear). New deployments should start 'local' and add Linear later if wanted.",
+    "_kind_note": "WHERE the board (the only state machine) lives. All ops go through the facade ${CLAUDE_PLUGIN_ROOT}/scripts/tracker.mjs in every mode. 'local' = git-native board (.autodev/board/*.json): zero setup, no token, no rate limits, offline; view with 'tracker.mjs board' (text + board.html). 'linear' = the board IS Linear (live API; required for intake.mode=linear). 'shortcut' = the board IS Shortcut (REST v3, live; cli intake only — see the shortcut block below). New deployments should start 'local' and add a hosted tracker later if wanted.",
+    "shortcut": {
+      "_note": "ONLY used when kind=='shortcut'. Same stage KEYS as 'statuses' below; each id is a Shortcut WORKFLOW STATE id (integer) from GET /api/v3/workflows — set up per ops/shortcut-setup.md. Comment-driven intake (intake.mode=linear) is Linear-only; Shortcut deployments use intake.mode=cli.",
+      "api_token_env": "SHORTCUT_API_TOKEN",
+      "_api_token_note": "or a token file at ~/.config/autodev/<client_name>.shortcut.token (kept off git/chat).",
+      "workflow_id": "FILL_AT_SETUP",
+      "_workflow_id_note": "the Shortcut Workflow whose states the pipeline uses — doctor validates every state id below belongs to it.",
+      "group_id": "",
+      "_group_id_note": "optional Shortcut Group (team) UUID stamped on created stories/epics; leave empty for workspaces without groups.",
+      "statuses": {
+        "new_request":               { "id": "FILL_AT_SETUP" },
+        "clarifying":                { "id": "FILL_AT_SETUP", "human": true },
+        "prd_review":                { "id": "FILL_AT_SETUP", "human": true },
+        "breakdown":                 { "id": "FILL_AT_SETUP" },
+        "ready_for_ai_dev":          { "id": "FILL_AT_SETUP" },
+        "ai_development":            { "id": "FILL_AT_SETUP" },
+        "ai_qa":                     { "id": "FILL_AT_SETUP" },
+        "ready_for_human_review":    { "id": "FILL_AT_SETUP", "human": true },
+        "ready_for_human_acceptance":{ "id": "FILL_AT_SETUP", "human": true },
+        "blocked":                   { "id": "FILL_AT_SETUP", "human": true },
+        "done":                      { "id": "FILL_AT_SETUP" }
+      }
+    },
     "mirror": {
       "linear": false,
       "_note": "local kind only: true = ALSO mirror to Linear asynchronously (best-effort dashboard). Ops queue to .autodev/board/.mirror-queue.jsonl; drain with 'tracker.mjs flush-mirror' (e.g. at the end of each tick). Local stays the source of truth — Linear rate limits never block the pipeline."

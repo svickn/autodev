@@ -71,6 +71,18 @@ if [[ "$KIND" == "local" ]]; then
       warn "tracker.mirror.linear is on but no Linear token — ops will queue until one exists"
     fi
   fi
+elif [[ "$KIND" == "shortcut" ]]; then
+  # jq's // doesn't default an empty string — mirror the driver's ||-falsy behavior
+  SC_ENV=$(jq -r '.tracker.shortcut.api_token_env // ""' "$CONFIG"); [[ -n "$SC_ENV" ]] || SC_ENV="SHORTCUT_API_TOKEN"
+  [[ "$(jq -r '.tracker.hierarchy // "issue"' "$CONFIG")" == "project" ]] && bad "tracker.hierarchy=project needs kind=linear (project statuses are Linear-only) — use hierarchy=issue with Shortcut"
+  [[ "$(jq -r '.intake.mode // "cli"' "$CONFIG")" == "cli" ]] || bad "intake.mode=linear needs tracker.kind=linear — Shortcut deployments use cli intake"
+  if [[ -n "${!SC_ENV:-}" ]] || [[ -f "$HOME/.config/autodev/$CLIENT.shortcut.token" ]]; then
+    ok "token present"
+    # validates token + workflow + every configured state id against live Shortcut
+    if OUT=$(node "$HERE/shortcut.mjs" doctor 2>&1); then ok "$OUT"; else bad "$OUT"; fi
+  else
+    bad "no Shortcut token (\$$SC_ENV or ~/.config/autodev/$CLIENT.shortcut.token) — or set tracker.kind=local (no token needed)"
+  fi
 elif [[ -n "${LINEAR_API_TOKEN:-}" ]] || [[ -f "$HOME/.config/autodev/$CLIENT.linear.token" ]]; then
   ok "token present"
   # validates token + team + every configured status id against live Linear

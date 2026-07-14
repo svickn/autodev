@@ -22,6 +22,10 @@ your phone, run `/remote-control` in Claude Code and pair the Claude mobile app.
   files. Needs a Linear team + API token; `ops/linear-setup.md` is the walkthrough,
   and `/autodev:init` prints exactly what's left to wire. Without it: the local
   board, which needs nothing.
+- **Shortcut** (`tracker.kind: shortcut`) — the board lives in Shortcut. Needs a
+  workflow with the standard states + an API token; `ops/shortcut-setup.md` is the
+  walkthrough. Intake stays in-session (`cli`) — comment-driven intake is
+  Linear-only.
 - **BrainGrid** (`braingrid.enabled`, default on) — a spec-authoring tool the engine
   prefers for PRDs. **Not installed? Nothing breaks** — the engine detects that and
   falls back to its own PM personas automatically. Wiring it up is a 5-step CLI
