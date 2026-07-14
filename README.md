@@ -92,14 +92,47 @@ a no-terminal mode driven entirely from tickets and comments.
 
 Both feed the human gates, never replace them.
 
+## Dependencies
+
+| Dependency | Needed for | If missing |
+|---|---|---|
+| [Claude Code](https://claude.com/claude-code) (subscription login) + `git` · `node` 18+ · `jq` | the engine itself | setup's preflight (`doctor`) flags it with the fix |
+| `gh` + a GitHub remote | default draft-PR delivery | set `review.delivery: local_diff` — fully local |
+| [agency-agents](https://github.com/msitarzewski/agency-agents) personas (MIT) | specialist dev/QA agents | auto-installed on demand from a pinned ref (`personas.auto_install`); otherwise runs on the built-in fallback agent |
+| Playwright (MCP) | screenshots for live/visual QA and bug repro | `/autodev:qa` / `/autodev:repro` offer to install it (with your consent); visual checks flag instead of block |
+| [BrainGrid CLI](https://braingrid.ai) | spec authoring | agents author the PRD/breakdown instead — nothing breaks |
+| Linear | `tracker.kind: linear` or mirroring | the zero-setup local board (default) |
+
+## Toggles (preferred-optional, degrade gracefully)
+
+| Toggle | Options | Default |
+|---|---|---|
+| `tracker.kind` | `local` (git-native board — zero setup, no tokens, `tracker.mjs board` view) **or** `linear` (the board is Linear, live) | `local` for new setups (init's default) |
+| `tracker.mirror.linear` | local mode: also mirror to Linear async (queued, off the critical path) | `false` |
+| `braingrid.enabled` | BrainGrid spec authoring **or** agent (PM + PjM) fallback | `true` (auto-falls-back if absent) |
+| `session_mode` | `concierge` (Marj greets, plain English drives) · `signal` (one-line pointer, dormant until invoked) · `silent` | `concierge` |
+| `intake.mode` | `cli` (in-session) **or** `linear` (tickets + comments, no terminal) | `cli` |
+| `intake.bugs` | `triage` (flag for a human) **or** `pipeline` (repro-test-first fixing) | `triage` |
+| `preview.enabled` | launch the assembled feature at acceptance + post URL/relaunch cmd | `true` |
+| `backlog.enabled` | idle-time backlog drain (entry-gated batches, own PR each) | `false` |
+| `tracker.hierarchy` | `issue` (feature as a board issue) **or** `project` (feature as a Linear Project) | `issue` |
+| `review.granularity` | `per_story` (review each ticket) **or** `per_feature` (auto-merge to the feature branch; review the whole) | `per_story` |
+| `review.delivery` | `draft_pr` (push + GitHub draft PRs) **or** `local_diff` (no GitHub — local branches + diffs, pushes blocked) | `draft_pr` |
+| `review.quality_review` | leanness/dedup pass over the assembled feature at close-out | `true` |
+| `backup.enabled` | WIP durability — push the feature branch to `backup.remote` after each story merge (never a PR; no-op under `local_diff`) | `true` |
+| `personas.auto_install` | download missing specialist personas on demand (pinned ref) **or** run everything as the fallback agent | `true` |
+| `execution.logging` | `quiet` (one line per action) · `normal` (checkpoint comments) · `verbose` (+ diffs) | `normal` |
+| `execution.incremental_breakdown` | whole feature at Gate 1 **or** per-milestone on demand | `false` |
+| `reporting.cadence` | operator digest: `off` · `hourly` · `<N>m` → log / slack / linear | `off` |
+
 ## Docs
 
 - [`docs/setup.md`](docs/setup.md) — the preflight (doctor), teammates, Linear /
   BrainGrid / branch protection, plugin vs vendored, updating.
 - [`docs/faq.md`](docs/faq.md) — cost, undo, GitHub-or-not, "do I need to read
   code?", team use, and more.
-- [`docs/guarantees.md`](docs/guarantees.md) — the non-negotiables, every toggle,
-  the agent roster.
+- [`docs/guarantees.md`](docs/guarantees.md) — the non-negotiables and the agent
+  roster.
 - `reference/manual.md` — the operating manual the engine itself follows.
 
 ## Status
