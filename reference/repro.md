@@ -33,9 +33,12 @@ endpoints — refusing to hunt"`; do not run.
 failure, not evidence: `move <issue> blocked --note "🛑 blocked — app failed to
 start: <exact failure>; need: <the specific ask>"`. **Attempts are not burned on a
 broken environment.** Same rule when the bug needs the app driven and
-`qa.live_browser_driver` is empty or unavailable: `blocked` with that exact gap —
-a hunt that can't capture artifacts can't clear the cold reader, so it doesn't
-start.
+`qa.live_browser_driver` is empty or unavailable — but **offer the install first**,
+exactly as `reference/deep-qa.md` §2 does (operator-approved `claude mcp add
+playwright …` + browser download, verified by a launch probe, then hunt).
+Declined or headless → `blocked` with that exact gap **and the install one-liner
+in the note** — a hunt that can't capture artifacts can't clear the cold reader,
+so it doesn't start.
 
 ## 2 · Parse and ground
 
