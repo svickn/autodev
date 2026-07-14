@@ -170,6 +170,42 @@ check "operator commands.test survives the merge" bash -c \
   "jq -e '.commands.test==\"npm run custom-test\"' '$T6/.autodev/deployment.json'"
 rm -rf "$T6"
 
+echo "persona resolution (ensure-personas.sh — no network in any of these):"
+check "ensure-personas.sh parses" bash -n "$PLUGIN/scripts/ensure-personas.sh"
+check "example config declares auto_install / fallback / pinned library" bash -c \
+  "jq -e '.personas.auto_install==true and .personas.fallback==\"general-purpose\" and (.personas.library.ref|length>10)' '$PLUGIN/reference/deployment.example.json'"
+T7=$(mktemp -d); mkdir -p "$T7/.autodev" "$T7/agents"
+# needed set: bare-file resolve, prefixed-file resolve, builtin, and two genuinely missing
+jq '.personas.roster=["backend-architect","code-reviewer"]
+    | .personas.stage_defaults={}
+    | .personas.dev_routing=[{"match":"x","persona":"frontend-developer"}]
+    | .personas.qa_angles={"verdict":"reality-checker"}' \
+  "$PLUGIN/reference/deployment.example.json" > "$T7/.autodev/deployment.json"
+touch "$T7/agents/backend-architect.md" "$T7/agents/engineering-code-reviewer.md"
+POUT=$(AUTODEV_AGENTS_DIR="$T7/agents" bash "$PLUGIN/scripts/ensure-personas.sh" --check "$T7")
+# match on the text, not the ✓ glyph — ANSI reset codes sit between them
+check "bare filename resolves" bash -c "echo '$POUT' | grep -q ' backend-architect\$'"
+check "prefixed library filename resolves (fuzzy)" bash -c "echo '$POUT' | grep -q ' code-reviewer\$'"
+check "fallback persona counts as built-in" bash -c "echo '$POUT' | grep -q 'general-purpose (built-in)'"
+check "missing personas report UNRESOLVED with the fallback" bash -c \
+  "echo '$POUT' | grep 'reality-checker UNRESOLVED' | grep -q 'general-purpose'"
+check "summary line totals the sets" bash -c "echo '$POUT' | grep -q '5 needed · 3 installed · 0 downloaded · 2 unresolved'"
+check "--check downloads nothing" bash -c "test \$(ls '$T7/agents' | wc -l) -eq 2"
+jq '.personas.auto_install=false' "$T7/.autodev/deployment.json" > "$T7/t" && mv "$T7/t" "$T7/.autodev/deployment.json"
+check "auto_install=false full run: no download side effects, still reports" bash -c \
+  "AUTODEV_AGENTS_DIR='$T7/agents' bash '$PLUGIN/scripts/ensure-personas.sh' '$T7' | grep -q '2 unresolved' && test \$(ls '$T7/agents' | wc -l) -eq 2"
+# consent fails CLOSED: a mistyped string "false" must behave like false, never re-enable downloads
+jq '.personas.auto_install="false"' "$T7/.autodev/deployment.json" > "$T7/t" && mv "$T7/t" "$T7/.autodev/deployment.json"
+check "non-boolean auto_install fails closed (no download attempt)" bash -c \
+  "AUTODEV_AGENTS_DIR='$T7/agents' bash '$PLUGIN/scripts/ensure-personas.sh' '$T7' 2>/dev/null | grep -q '2 unresolved' && test \$(ls '$T7/agents' | wc -l) -eq 2"
+# a config predating the persona keys gains them on upgrade
+jq 'del(.personas.auto_install, .personas.fallback, .personas.library)' \
+  "$PLUGIN/reference/deployment.example.json" > "$T7/.autodev/deployment.json"
+bash "$PLUGIN/scripts/upgrade-config.sh" "$T7" >/dev/null
+check "upgrade adds persona-resolution keys" bash -c \
+  "jq -e '.personas.auto_install==true and .personas.fallback==\"general-purpose\" and .personas.library.repo==\"msitarzewski/agency-agents\"' '$T7/.autodev/deployment.json'"
+rm -rf "$T7"
+
 echo "vendored install mode (install.sh — the plugin's sibling):"
 T4=$(mktemp -d); git -C "$T4" init -q; mkdir -p "$T4/.autodev" "$T4/.claude"
 echo '{"permissions":{"allow":["Bash(ls:*)"]},"hooks":{"SessionStart":[{"matcher":"startup","hooks":[{"type":"command","command":"echo team-hook"}]}]}}' > "$T4/.claude/settings.json"

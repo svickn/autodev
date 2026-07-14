@@ -137,6 +137,23 @@ else
   esac
 fi
 
+echo "personas (agency-agents):"
+# --check only — doctor never downloads; run-time ensure-personas.sh does (or fallback covers it)
+if POUT=$(bash "$HERE/ensure-personas.sh" --check "$REPO" 2>&1); then
+  PMISS=$(printf '%s\n' "$POUT" | grep -c "UNRESOLVED" || true)
+  if [[ "$PMISS" -eq 0 ]]; then
+    ok "$(printf '%s\n' "$POUT" | tail -1)"
+  elif [[ "$(jq -r '.personas.auto_install | if type=="boolean" then tostring elif type=="null" then "true" else "false" end' "$CONFIG")" == "true" ]]; then
+    warn "$PMISS persona(s) not installed — auto-installed at first run from $(jq -r '.personas.library.repo // "msitarzewski/agency-agents"' "$CONFIG") (doctor never downloads)"
+    printf '%s\n' "$POUT" | grep "UNRESOLVED" | sed 's/^/    /'
+  else
+    warn "$PMISS persona(s) not installed and personas.auto_install=false — they will run as personas.fallback"
+    printf '%s\n' "$POUT" | grep "UNRESOLVED" | sed 's/^/    /'
+  fi
+else
+  bad "ensure-personas.sh --check failed: $POUT"
+fi
+
 # team docs vs the autoDev workflow (advisory — never fails the preflight)
 if [[ -f "$HERE/check-docs.sh" ]]; then
   bash "$HERE/check-docs.sh" "$REPO" || true
