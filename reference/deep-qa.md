@@ -42,11 +42,19 @@ prod endpoints present and hermetic off"` and tell the operator. Then env up per
 devloop §6 (`qa.docker_up` · seed-once marker · `commands.app_run` →
 `commands.app_url`).
 
-**No driver, no walk:** a UI ticket with `qa.live_browser_driver` empty or
-unavailable stops here — `comment <issue> "🛑 deep-QA can't run — no live driver
-configured"` and tell the operator; an evidence-free report just burns the final
-review's bounce budget. Non-UI tickets proceed on live API/runtime checks, which
-need no driver. 🗒️ `▶️ deep-QA started · <n> planned paths`.
+**No driver, no walk — but a red always ships with its path.** A UI ticket with
+`qa.live_browser_driver` empty or unavailable doesn't dead-end; **offer the
+install, live in the session**: *"No browser driver is set up — want me to install
+it now? (`claude mcp add playwright npx @playwright/mcp@latest` + `npx playwright
+install chromium` — one-time, ~100 MB browser download.)"* On an explicit yes,
+run both, **verify with a launch probe** (open a blank page, capture one
+screenshot — a version check is not a browser check), 🗒️ `🧰 playwright driver
+installed on operator approval · probe ✓`, and continue. Declined, or no operator
+present (headless tick) → `comment <issue> "🛑 deep-QA can't run — no live driver
+configured; approve the install or set qa.live_browser_driver"` and stop — an
+evidence-free report just burns the final review's bounce budget. Non-UI tickets
+proceed on live API/runtime checks, which need no driver. 🗒️ `▶️ deep-QA started ·
+<n> planned paths`.
 
 ## 3 · Walk every path — capture as you go
 
