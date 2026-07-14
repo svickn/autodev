@@ -32,7 +32,7 @@
 //
 // Exit 0 on success (prints the useful id); non-zero with a clear error otherwise.
 
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join, dirname } from 'node:path';
 
@@ -41,7 +41,8 @@ const API = 'https://api.app.shortcut.com/api/v3';
 function die(msg) { console.error(`shortcut.mjs: ${msg}`); process.exit(1); }
 
 function findConfig() {
-  if (process.env.AUTODEV_CONFIG) return process.env.AUTODEV_CONFIG;
+  // guard like tracker.mjs does — a mangled AUTODEV_CONFIG must fall back, not die
+  if (process.env.AUTODEV_CONFIG && existsSync(process.env.AUTODEV_CONFIG)) return process.env.AUTODEV_CONFIG;
   let dir = process.cwd();
   for (let i = 0; i < 12; i++) {
     const p = join(dir, '.autodev', 'deployment.json');

@@ -19,6 +19,10 @@ Set `tracker.kind: "shortcut"` — all board ops still go through
 | Dependency | **Story Link** (`blocks` / `duplicates` / `relates to`) |
 | Pipeline stage | the story's **Workflow State** (the standard set below) |
 
+Heads-up: Shortcut is migrating Milestones → Objectives; the `POST /milestones`
+endpoint is marked deprecated (still live). If your workspace only shows
+"Objectives", they're the same object — the API accepts both today.
+
 Stories can't reference Milestones directly — the lane Epic carries the feature
 link; `create-issue --project <id>` is recorded as a `feature:<id>` label.
 
@@ -38,7 +42,7 @@ type `Unstarted` if you prefer it in the backlog area.
 | 5 | **Ready for AI Dev** | Stories queued + `ai-eligible`. |
 | 6 | **AI Development** | Engine coding (also where a rejected story returns). |
 | 7 | **AI QA** | Three-angle QA running. |
-| 8 | **Human Review (H)** | **Gate 2** — draft PR + manual test script (and per-feature acceptance). |
+| 8 | **Human Review (H)** | **Gate 2** — draft PR + manual test script (and per-feature acceptance). Paste this ONE state's id into BOTH config keys: `ready_for_human_review` *and* `ready_for_human_acceptance` — 11 keys, 10 states, this one does double duty (same as Linear). |
 | 9 | **Blocked (H)** | Stuck mid-pipeline; needs human input. |
 | 10 | **Done** | Merged / shipped. |
 

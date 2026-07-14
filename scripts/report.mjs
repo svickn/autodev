@@ -82,6 +82,9 @@ if ((cfg.tracker?.kind || 'linear') === 'local') {
       if (b) buckets[b]++;
     }
   } catch { /* no board yet — zeros */ }
+} else if ((cfg.tracker?.kind || 'linear') !== 'linear') {
+  // fail loud, never a silently-zero digest: only local + linear have snapshot paths
+  buckets.unsupported = cfg.tracker.kind;
 } else if (token && cfg.tracker?.team_id) {
   const d = await gql('query($t:String!){team(id:$t){issues(first:250){nodes{state{name type}}}}}', { t: cfg.tracker.team_id });
   for (const n of d?.team?.issues?.nodes || []) {
@@ -103,11 +106,14 @@ let wall = 'running';
 try { const until = Number(readFileSync(join(RUN_HOME, 'rate-limited-until'), 'utf8').trim()); if (until > now) wall = `rate-limited (resumes ${new Date(until * 1000).toLocaleTimeString()})`; } catch {}
 
 const sinceTxt = last ? `since ${new Date(last * 1000).toLocaleString()}` : 'first report';
+const counts = buckets.unsupported
+  ? `• board counts n/a — the digest doesn't support tracker.kind=${buckets.unsupported} yet (check the board directly)`
+  : `• in-flight (dev/QA): ${buckets.inflight}   • queued: ${buckets.queued}
+• ⏳ awaiting you (gates): ${buckets.awaiting_human}   • 🛑 blocked: ${buckets.blocked}
+• ✅ done: ${buckets.done}`;
 const digest =
 `📊 *autoDev digest — ${cfg.client_name || ''}* (${sinceTxt})
-• in-flight (dev/QA): ${buckets.inflight}   • queued: ${buckets.queued}
-• ⏳ awaiting you (gates): ${buckets.awaiting_human}   • 🛑 blocked: ${buckets.blocked}
-• ✅ done: ${buckets.done}   • commits ${last ? 'this window' : '(recent)'}: ${merged}
+${counts}   • commits ${last ? 'this window' : '(recent)'}: ${merged}
 • engine: ${wall}`;
 
 // --- deliver ---

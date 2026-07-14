@@ -72,7 +72,10 @@ if [[ "$KIND" == "local" ]]; then
     fi
   fi
 elif [[ "$KIND" == "shortcut" ]]; then
-  SC_ENV=$(jq -r '.tracker.shortcut.api_token_env // "SHORTCUT_API_TOKEN"' "$CONFIG")
+  # jq's // doesn't default an empty string — mirror the driver's ||-falsy behavior
+  SC_ENV=$(jq -r '.tracker.shortcut.api_token_env // ""' "$CONFIG"); [[ -n "$SC_ENV" ]] || SC_ENV="SHORTCUT_API_TOKEN"
+  [[ "$(jq -r '.tracker.hierarchy // "issue"' "$CONFIG")" == "project" ]] && bad "tracker.hierarchy=project needs kind=linear (project statuses are Linear-only) — use hierarchy=issue with Shortcut"
+  [[ "$(jq -r '.intake.mode // "cli"' "$CONFIG")" == "cli" ]] || bad "intake.mode=linear needs tracker.kind=linear — Shortcut deployments use cli intake"
   if [[ -n "${!SC_ENV:-}" ]] || [[ -f "$HOME/.config/autodev/$CLIENT.shortcut.token" ]]; then
     ok "token present"
     # validates token + workflow + every configured state id against live Shortcut
