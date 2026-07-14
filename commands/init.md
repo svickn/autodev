@@ -58,7 +58,9 @@ Set up autoDev for **this repo**. Safe to re-run any time to reconfigure.
    `"FILL_AT_SETUP"` when `tracker.kind` is `linear` — those are filled by hand
    after the Linear board is created (step 6 below). Drop the `install` block
    entirely (`docs_policy` was an `install.sh`-era concept; this plugin never
-   writes into `.claude/` at all, so there is nothing to preserve-vs-overwrite).
+   writes into `.claude/settings.json` or over a team-authored file — its only
+   `.claude/` artifact is step 6's identity pointer, so there is nothing to
+   preserve-vs-overwrite).
 5. Create the `.autodev` runtime directories: `mkdir -p .autodev/board .autodev/logs`
    (harmless if `tracker.kind` ends up `linear` — `board/` just stays empty; the
    git-native board and the operator digest log both land here on first use).

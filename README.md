@@ -5,7 +5,8 @@ PM → dev team → QA pipeline on your repo. You describe what you want; it wri
 spec, breaks it into tickets on a board you can watch, builds each one, QA's its own
 work from three angles, and hands you the result for review. **You stay in charge at
 exactly two moments:** you approve the plan before anything is built (Gate 1), and
-you approve the result before anything ships (Gate 2). Only humans merge.
+you approve the result before anything ships (Gate 2). Only humans merge — and
+nothing advances until you run the next `/autodev:loop`: you are the engine's clock.
 
 > **Validated end-to-end** in a sandbox (a 15-story landing page built autonomously,
 > 144 unit + 24 e2e tests green) **and hardened by a 20-hour autonomous production
@@ -17,8 +18,10 @@ you approve the result before anything ships (Gate 2). Only humans merge.
 ## Your first 30 minutes
 
 You need: Claude Code (logged in with a claude.ai subscription), plus `git`, `node`
-18+, and `jq` installed. That's it — if you already use Claude Code, you likely have
-all four.
+18+, and `jq` installed — and for the default GitHub delivery, `gh` and a GitHub
+remote (no GitHub? choose `review.delivery: local_diff` at setup and skip both).
+Don't audit this list by hand: setup ends with a preflight that verifies every tool
+and prints the fix for anything missing.
 
 **1 · Install the plugin** — in Claude Code, once per machine:
 
@@ -58,17 +61,23 @@ ticket.
 
 Each call advances the work by one step. **The first loop drafts the spec (a PRD —
 product requirements document) and then stops, waiting for you.** That pause is
-Gate 1 — nothing gets built until you've read the summary it posts and said
-**"approved"** (or told it what to change). After you approve, keep running
-`/autodev:loop` — it breaks the spec into tickets and builds them one by one. Watch
-the board anytime: cards move across columns live (`.autodev/board.html`, or ask
-"what's the status?").
+Gate 1 — the summary appears **right in the chat** (and on the ticket), and nothing
+gets built until you've typed **"approved"** in that same chat (or told it what to
+change; moving the card on the board works too). After you approve, keep running
+`/autodev:loop` — it breaks the spec into tickets and builds them one by one. A
+small three-ticket feature is a handful of calls: one for the spec, one for the
+breakdown, then roughly one to three per ticket. Watch the board anytime: cards move
+across columns (`.autodev/board.html` — regenerated each time the board changes;
+open it in a browser, or just ask "what's the status?").
 
-**5 · Review the result (Gate 2).** In hands-on mode each finished ticket arrives as
-a GitHub draft PR with the QA reports and a manual test script attached. In autopilot
-you're called back once, at the end, with the feature **already running** — a URL
-plus a checklist ("do X → expect Y"). Click through it like a customer. Say
-"approved" (or what's broken), and merge on GitHub when you're happy.
+**5 · Review the result (Gate 2).** You never need to read the code. In hands-on
+mode each finished ticket arrives as a GitHub *draft* PR with the QA reports and a
+**manual test script** attached — follow the script like a user, not a code
+reviewer. When the whole feature assembles, it's **launched for you** (preview is on
+by default): a URL plus a checklist ("do X → expect Y") — in autopilot, that
+running-feature review is the one time you're called back at all. Click through it
+like a customer and say "approved" (or what's broken). To ship: on GitHub, mark the
+draft PR **"Ready for review"**, then **Merge** (a draft can't be merged until then).
 
 From then on you don't need to remember commands: a configured repo greets you by
 name (the assistant is called **Marj** — rename her in config) with a status
@@ -100,23 +109,28 @@ answer about what that means:
   branches and opens *draft* PRs; branch protection (not trust) enforces the rest.
   Prefer nothing on GitHub at all? Set `review.delivery: local_diff` — local
   branches and diffs only, pushes hard-blocked.
-- **No telemetry.** The engine never phones home. Its only network calls are ones
-  you configure (your Linear workspace, your Slack webhook) plus one consent-gated
-  download: specialist agent personas fetched from a version-pinned public library
-  (details in [Agent roster](#agent-roster-agency-agents); `personas.auto_install:
-  false` turns it off — everything then runs on Claude Code's built-in agent).
+- **No telemetry.** The engine never phones home. Its only network calls are for
+  tools you configure (your Linear workspace, your Slack webhook, BrainGrid if you
+  install it) plus one consent-gated download: specialist agent personas fetched
+  from a version-pinned public library (details in
+  [Agent roster](#agent-roster-agency-agents); `personas.auto_install: false` turns
+  the download off — anything not already installed then runs as the built-in
+  fallback agent).
 - **Tiny footprint.** In your repo: `.autodev/deployment.json` (commit it — the
-  deployment travels with the repo) plus runtime state under `.autodev/`. It never
+  deployment travels with the repo), runtime state under `.autodev/`, and a small
+  identity pointer at `.claude/CLAUDE.md` — written only when that slot is empty or
+  holds a previous pointer; a team-authored file there is never touched. It never
   writes into `.claude/settings.json` or your git config.
 - **QA never touches production.** Every test and live run applies hermetic
   overrides (`qa.hermetic`) pointing external calls at local/sandbox endpoints; the
-  preflight fails if production endpoints are in reach.
+  preflight fails when production endpoints are present and those overrides are off.
 
 ## How it works
 
 Work flows through a **ticket board** — the pipeline's single source of truth. Every
 step is a card moving through a column (New Request → PRD Review (H) → Ready for AI
-Dev → AI Development → AI QA → Human Review (H) → Done — "(H)" marks your moments),
+Dev → AI Development → AI QA → Human Review (H) → Done, with Clarifying/Breakdown/
+Blocked columns alongside — "(H)" marks your moments),
 so you watch progress like any sprint board. The board is a zero-setup local one by default; flip `tracker.kind: linear`
 to use Linear live, including a mode where you drive everything from Linear tickets
 and comments with **no terminal at all** (`intake.mode: linear`).
@@ -146,9 +160,10 @@ gates, never replace them.
 
 ## Setup reference
 
-**Preflight:** `doctor` runs at the end of `/autodev:init` and any time after —
-it checks tools, config, board connectivity, and browser-driver availability, and
-prints the fix for anything it flags.
+**Preflight:** `doctor` runs at the end of `/autodev:init`; re-run it any time by
+asking in Claude Code, *"run the autoDev preflight (doctor)"* — it's a script the
+assistant runs for you. It checks tools, config, board connectivity, and
+browser-driver availability, and prints the fix for anything it flags.
 
 **Teammates:** anyone who pulls a configured repo just installs the plugin (step 1) —
 the committed `.autodev/deployment.json` does the rest. For build updates on your
@@ -165,7 +180,9 @@ phone, run `/remote-control` in Claude Code and pair the Claude mobile app.
   falls back to its own PM personas automatically. Wiring it up is a 5-step CLI
   install (below).
 - **Branch protection** on your default branch — enforces "only humans merge"
-  mechanically. GitHub settings, two minutes, strongly recommended.
+  mechanically. Two minutes on GitHub: repo **Settings → Branches → Add branch
+  protection rule** on `main`, check *"Require a pull request before merging"*.
+  Strongly recommended.
 
 **One default worth knowing:** `backup.enabled` is on — after each ticket merges to
 the feature branch, that branch is pushed to `origin` as a work-in-progress backup
@@ -181,8 +198,8 @@ pushing.
   `.autodev/engine/` — auditable and pinned in your git history, for teams that
   can't run third-party plugins. Vendored commands are `/autodev-init` ·
   `/autodev-new` · `/autodev-loop` (the qa/repro commands are plugin-only today).
-  Pick **one mode per repo** — the installer and the plugin each refuse to double
-  up, and `/autodev:init` migrates a vendored repo to the plugin automatically.
+  Pick **one mode per repo** — the installer refuses to run where the plugin is
+  enabled, and `/autodev:init` migrates a vendored repo to the plugin automatically.
 
 ## Updating
 
@@ -197,12 +214,13 @@ keys get defaults; your values always win), and reports what was in flight. Revi
 commit what it changes. Manual equivalents:
 
 ```bash
-bash "$PLUGIN_ROOT/scripts/migrate-vendored.sh" .   # old engine files → backup
-bash "$PLUGIN_ROOT/scripts/upgrade-config.sh" .     # adds new keys; your values win
+bash "${CLAUDE_PLUGIN_ROOT}/scripts/migrate-vendored.sh" .   # old engine files → backup
+bash "${CLAUDE_PLUGIN_ROOT}/scripts/upgrade-config.sh" .     # adds new keys; your values win
 ```
 
 **Vendored installs:** re-run `./install.sh /path/to/repo` from a current checkout —
-idempotent, config preserved, version re-stamped so `doctor` can flag staleness.
+idempotent, config preserved, and the engine version is re-stamped into
+`deployment.json` so you can see exactly what's deployed.
 
 ## The non-negotiables
 
@@ -222,7 +240,7 @@ idempotent, config preserved, version re-stamped so `doctor` can flag staleness.
 - **Post-merge clean-room verify** — fresh checkout + clean install + integrated
   suites after every merge, auto-revert on fail, human prod sign-off at the end.
 - **Hermetic always** — QA and live runs never touch production services or creds;
-  `doctor` fails when prod endpoints are in reach.
+  `doctor` fails when prod endpoints are present and the hermetic overrides are off.
 - **Bugs get reproduced before they get fixed** — `intake.bugs: triage` (default:
   flagged for a human) or `pipeline` (repro-test-first: failing test committed
   before the fix, QA verifies red → green).
@@ -231,6 +249,9 @@ idempotent, config preserved, version re-stamped so `doctor` can flag staleness.
 - **Backlog drain is opt-in and gated** (`backlog.enabled`) — idle-time work on
   your existing ticket pile, one approved batch at a time, a vetoable context brief
   posted before any code, Gate 2 never waived, your priority order never re-ranked.
+- **Own lane on a shared board** — the engine acts only on tickets it created
+  (tagged with its instance label) or that you explicitly hand it; several autoDev
+  instances — and your team's own tickets — can share one board untouched.
 - **Your convention docs are read-only to the AI** — `AGENTS.md` / `CLAUDE.md` are
   obeyed, never edited; convention changes arrive as separate PRs with rationale.
 - **Glass-box observability** — every action leaves a board trail: status moves,
@@ -300,18 +321,87 @@ state without downloading. Routing lives in `.autodev/deployment.json` (`persona
 | Role | Persona |
 |---|---|
 | PRD · Breakdown | product-manager · project-manager-senior |
-| Dev (routed by files) | backend-architect · frontend-developer · database-optimizer · architect-ux / ui-designer |
+| Dev (routed by files) | backend-architect · frontend-developer · database-optimizer · architect-ux |
 | QA — conformance · adversarial · regression/verdict | code-reviewer · test-results-analyzer · evidence-collector · application-security-engineer · api-tester · **reality-checker** |
 | QA — visual/UI (conditional, UI-heavy stories) | evidence-collector · **ui-designer** · **architect-ux** (design fidelity · theme adherence · responsive · visual a11y; advisory) |
 
 ## Status
 
-**v1 — complete, validated, and hardened by a real run.** Proven end-to-end in a
+**v2 (2.1.0) — validated, and hardened by a real run.** Proven end-to-end in a
 sandbox (full feature build + dev↔QA loop), then run **20 hours autonomously on a
 production codebase** — every gap that surfaced is folded back in
 ([`BACKLOG.md`](./BACKLOG.md)): hermetic safety, acceptance QA, leanness review,
 operator digest, per-feature metrics, hung-tick recovery, and more. Recent additions:
 the autoQA commands (`/autodev:qa`, `/autodev:repro`) and on-demand persona install.
+
+## FAQ
+
+**What does installing this do to my other repos?**
+Nothing. In repos without `.autodev/deployment.json`, the hooks exit silently — no
+greeting, no files, no behavior change. One deliberate exception, disclosed above:
+in any repo, *Claude Code* is blocked from editing `AGENTS.md`/`CLAUDE.md` (your own
+editor and terminal never are).
+
+**Does it phone home?**
+No telemetry. Network calls happen only for tools you configure (Linear, Slack,
+BrainGrid) plus the consent-gated persona download from a pinned ref —
+`personas.auto_install: false` disables that too.
+
+**Can it merge to `main` or mess up my GitHub?**
+No. Only humans merge; the engine pushes feature/story branches and opens *draft*
+PRs. With branch protection on, GitHub enforces that mechanically. `local_diff` mode
+blocks all pushing.
+
+**Can I undo what it builds?**
+Yes. Everything lands on branches behind unmerged PRs — close the PR, delete the
+branch, done. After a merge, the clean-room verify auto-reverts anything that breaks
+the integrated build.
+
+**What does it cost?**
+Your existing Claude subscription — no API key, no separate bill. A feature is many
+agent-hours, so expect meaningful quota use; you control the burn by how often you
+run `/autodev:loop`, and nothing runs between calls.
+
+**How long does a feature take?**
+Each `/autodev:loop` call is one bounded step: a small three-ticket feature is
+roughly one call for the spec, one for the breakdown, one to three per ticket, and
+a close-out — call it a dozen for a small feature, spread however you like.
+
+**Is anything running when I'm not looking?**
+No — no daemon, no background work between calls, unless you deliberately wire the
+optional 24/7 timer (`ops/launchd-timer.md`).
+
+**Do I need to be able to read code?**
+No. Every ticket arrives with QA reports and a manual test script, and the
+assembled feature is launched for you at acceptance — a URL plus a do-X-expect-Y
+checklist. Judge it like a customer.
+
+**Does my project need to be on GitHub?**
+Only for the default draft-PR delivery. `review.delivery: local_diff` keeps
+everything local — branches and diffs, no pushes, no `gh` needed.
+
+**What if I don't know git?**
+The engine drives git. Your verbs are "approved", "what's the status?", and
+GitHub's Merge button.
+
+**How do I re-run the health check?**
+In Claude Code, ask: *"run the autoDev preflight (doctor)"*. It checks tools,
+config, board connectivity, and the browser driver, and prints the fix for
+anything it flags.
+
+**What happens if I run `/autodev:loop` in a repo I never set up?**
+It notices there's no config and walks you through setup first (the same questions
+as `/autodev:init`), then continues with your work.
+
+**How is this different from just asking Claude Code to build the feature?**
+Structure and audit: a board as the single source of truth, two human gates, QA by
+fresh agents that didn't write the code, tests required with every change, and a
+comment trail for every action — instead of one long chat you have to babysit.
+
+**Can my team use it — or several instances on one board?**
+Yes. Teammates just install the plugin; the committed `.autodev/deployment.json`
+does the rest. Each instance only touches tickets tagged with its own label, so
+several autoDevs — and your team's own tickets — coexist on one board safely.
 
 ## Managed service
 
