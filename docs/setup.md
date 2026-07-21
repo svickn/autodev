@@ -35,6 +35,15 @@ your phone, run `/remote-control` in Claude Code and pair the Claude mobile app.
   protection rule** on `main`, check *"Require a pull request before merging"*.
   Strongly recommended.
 
+## Unattended (24/7) mode
+
+Wiring the timer (`ops/launchd-timer.md`) means an unattended agent working in your
+repo with your credentials — enable it only for a repo and account you trust it
+with. In that mode, branch protection on the default branch is the *enforcement* of
+"only humans merge", not just a nicety: run `doctor` before loading the timer — it
+fails the preflight when the timer is wired and the branch is unprotected (fix per
+the bullet above).
+
 ## One default worth knowing
 
 `backup.enabled` is on — after each ticket merges to the feature branch, that branch

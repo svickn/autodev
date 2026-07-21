@@ -5,6 +5,13 @@ by design (see the plugin design spec's "Open questions"): it's opt-in, rarely
 used, and `launchd` needs a stable file path that survives a plugin update (the
 plugin's own cache directory is versioned and moves on every upgrade).
 
+Before loading the timer: unattended mode assumes a trusted repo and trusted
+credentials — the tick runs headlessly with a scoped tool allowlist, but it still
+acts as you. Branch protection on the default branch is the mechanical enforcement
+of "only humans merge", so run the doctor preflight first — it fails when the timer
+is wired and the branch is unprotected (fix: GitHub → Settings → Branches, require a
+pull request before merging).
+
 ## 1. Copy the scripts to a stable path
 
 ```bash
