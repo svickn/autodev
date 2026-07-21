@@ -39,6 +39,32 @@ git -C "$REPO" remote get-url origin >/dev/null 2>&1 && ok "origin remote presen
 git -C "$REPO" show-ref --verify --quiet "refs/heads/$BRANCH" 2>/dev/null \
   || git -C "$REPO" ls-remote --exit-code --heads origin "$BRANCH" >/dev/null 2>&1 \
   && ok "default branch '$BRANCH' exists" || warn "default branch '$BRANCH' not found locally/remotely"
+# branch protection — the mechanical enforcement of "only humans merge" (manual.md
+# non-negotiable 3). draft_pr only: local_diff never pushes, so there's nothing to protect.
+if [[ "$(jq -r '.review.delivery // "draft_pr"' "$CONFIG")" == "draft_pr" ]]; then
+  # unprotected is a warn interactively but a FAIL once the 24/7 timer is wired — an
+  # unattended runner must never be one weak setting away from merging to $BRANCH itself
+  TIMER_WIRED=0
+  launchctl list 2>/dev/null | grep -q "com.autodev" && TIMER_WIRED=1
+  HB="$(jq -r '.runner.heartbeat_file // ""' "$CONFIG")"; HB="${HB/#\~/$HOME}"
+  [[ -n "$HB" && -f "$HB" ]] && TIMER_WIRED=1
+  PROT_FIX="GitHub → Settings → Branches → add a rule on '$BRANCH' with 'Require a pull request before merging'"
+  if ! command -v gh >/dev/null; then
+    warn "gh missing — can't verify branch protection on '$BRANCH'; check by hand: $PROT_FIX"
+  elif PERR=$( (cd "$REPO" && gh api "repos/{owner}/{repo}/branches/$BRANCH/protection") 2>&1 >/dev/null ); then
+    ok "branch protection active on '$BRANCH'"
+  elif grep -qi "not protected" <<<"$PERR"; then
+    if [[ "$TIMER_WIRED" -eq 1 ]]; then
+      bad "default branch '$BRANCH' is UNPROTECTED with the 24/7 timer wired — protect it before unattended runs: $PROT_FIX"
+    else
+      warn "default branch '$BRANCH' is unprotected — 'only humans merge' has no mechanical backstop; $PROT_FIX"
+    fi
+  else
+    warn "couldn't verify branch protection on '$BRANCH' ($(head -1 <<<"$PERR")) — check by hand: $PROT_FIX"
+  fi
+else
+  ok "branch protection n/a (review.delivery=local_diff — no pushes, no PRs)"
+fi
 
 echo "toolchain (B7):"
 if [[ -f "$REPO/.tool-versions" ]]; then

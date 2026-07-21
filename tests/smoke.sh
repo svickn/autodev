@@ -218,6 +218,30 @@ check "upgrade adds persona-resolution keys" bash -c \
   "jq -e '.personas.auto_install==true and .personas.fallback==\"general-purpose\" and .personas.library.repo==\"msitarzewski/agency-agents\"' '$T7/.autodev/deployment.json'"
 rm -rf "$T7"
 
+echo "headless allowlist hardening (AD-17 / external issue #9):"
+check "devloop-tick.sh parses" bash -n "$PLUGIN/scripts/devloop-tick.sh"
+check "doctor.sh parses" bash -n "$PLUGIN/scripts/doctor.sh"
+check "allowlist never grants gh pr merge (only humans merge)" bash -c \
+  "! grep -q 'gh pr merge' '$PLUGIN/scripts/devloop-tick.sh'"
+check "allowlist never grants bare node (node -e = arbitrary exec)" bash -c \
+  "! grep -qF 'Bash(node *)' '$PLUGIN/scripts/devloop-tick.sh'"
+check "allowlist never grants bare jq" bash -c \
+  "! grep -qF 'Bash(jq' '$PLUGIN/scripts/devloop-tick.sh'"
+check "node is scoped to the engine's tracker.mjs" bash -c \
+  "grep -qF 'Bash(node \${CLAUDE_PLUGIN_ROOT}/scripts/tracker.mjs' '$PLUGIN/scripts/devloop-tick.sh'"
+check "doctor has the branch-protection check" bash -c \
+  "grep -qF 'branches/\$BRANCH/protection' '$PLUGIN/scripts/doctor.sh'"
+check "intake authorizes nobody by default (no more '*')" bash -c \
+  "jq -e '.intake.authorized_operators == []' '$PLUGIN/reference/deployment.example.json'"
+# right-biased merge: an operator's existing list must survive the schema upgrade
+T8=$(mktemp -d); mkdir -p "$T8/.autodev"
+jq '.intake.authorized_operators=["alice@acme.co"]' \
+  "$PLUGIN/reference/deployment.example.json" > "$T8/.autodev/deployment.json"
+bash "$PLUGIN/scripts/upgrade-config.sh" "$T8" >/dev/null
+check "operator's authorized_operators survives config upgrade" bash -c \
+  "jq -e '.intake.authorized_operators == [\"alice@acme.co\"]' '$T8/.autodev/deployment.json'"
+rm -rf "$T8"
+
 echo "vendored install mode (install.sh — the plugin's sibling):"
 T4=$(mktemp -d); git -C "$T4" init -q; mkdir -p "$T4/.autodev" "$T4/.claude"
 echo '{"permissions":{"allow":["Bash(ls:*)"]},"hooks":{"SessionStart":[{"matcher":"startup","hooks":[{"type":"command","command":"echo team-hook"}]}]}}' > "$T4/.claude/settings.json"
