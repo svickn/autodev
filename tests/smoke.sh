@@ -81,21 +81,35 @@ check "silent when unconfigured" bash -c \
   "test -z \"\$(echo '{\"cwd\":\"$UNCONF\"}' | '$PLUGIN/hooks/session-signal.sh')\""
 rmdir "$UNCONF"
 
-echo "push guard (PreToolUse — replaces .git/hooks/pre-push):"
+echo "session marker (UserPromptSubmit — gates the guards below to sessions that engaged autoDev):"
+MARKDIR="${TMPDIR:-/tmp}/autodev-sessions"
+SID="smoke-engaged-$$"
+UNSID="smoke-unengaged-$$"
+rm -f "$MARKDIR/$SID" "$MARKDIR/$UNSID"
+check "an autoDev slash command stamps the session marker" bash -c \
+  "echo '{\"session_id\":\"$SID\",\"prompt\":\"/autodev:loop\"}' | '$PLUGIN/hooks/session-mark.sh' >/dev/null 2>&1; test -f '$MARKDIR/$SID'"
+check "an ordinary prompt does not stamp a marker" bash -c \
+  "echo '{\"session_id\":\"$UNSID\",\"prompt\":\"please push my branch\"}' | '$PLUGIN/hooks/session-mark.sh' >/dev/null 2>&1; ! test -f '$MARKDIR/$UNSID'"
+
+echo "push guard (PreToolUse — replaces .git/hooks/pre-push; only active once the session engaged autoDev):"
+check "unengaged session: even a main-branch push is a no-op" bash -c \
+  "echo '{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git push origin main\"},\"cwd\":\"$TGT\",\"session_id\":\"$UNSID\"}' | '$PLUGIN/hooks/guard-push.sh' | wc -c | tr -d '[:space:]' | grep -qx 0"
 check "feature branch push allowed" bash -c \
-  "echo '{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git push origin feature/x\"},\"cwd\":\"$TGT\"}' | '$PLUGIN/hooks/guard-push.sh' | wc -c | tr -d '[:space:]' | grep -qx 0"
+  "echo '{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git push origin feature/x\"},\"cwd\":\"$TGT\",\"session_id\":\"$SID\"}' | '$PLUGIN/hooks/guard-push.sh' | wc -c | tr -d '[:space:]' | grep -qx 0"
 check "main branch push denied" bash -c \
-  "echo '{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git push origin main\"},\"cwd\":\"$TGT\"}' | '$PLUGIN/hooks/guard-push.sh' | jq -e '.hookSpecificOutput.permissionDecision == \"deny\"'"
+  "echo '{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git push origin main\"},\"cwd\":\"$TGT\",\"session_id\":\"$SID\"}' | '$PLUGIN/hooks/guard-push.sh' | jq -e '.hookSpecificOutput.permissionDecision == \"deny\"'"
 jq '.review.delivery="local_diff"' "$TGT/.autodev/deployment.json" > "$TGT/.autodev/t" && mv "$TGT/.autodev/t" "$TGT/.autodev/deployment.json"
 check "local_diff: even a feature push is denied" bash -c \
-  "echo '{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git push origin feature/x\"},\"cwd\":\"$TGT\"}' | '$PLUGIN/hooks/guard-push.sh' | jq -e '.hookSpecificOutput.permissionDecision == \"deny\"'"
+  "echo '{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git push origin feature/x\"},\"cwd\":\"$TGT\",\"session_id\":\"$SID\"}' | '$PLUGIN/hooks/guard-push.sh' | jq -e '.hookSpecificOutput.permissionDecision == \"deny\"'"
 jq '.review.delivery="draft_pr"' "$TGT/.autodev/deployment.json" > "$TGT/.autodev/t" && mv "$TGT/.autodev/t" "$TGT/.autodev/deployment.json"
 
-echo "docs guard (PreToolUse — replaces the settings.json deny rule):"
+echo "docs guard (PreToolUse — replaces the settings.json deny rule; only active once the session engaged autoDev):"
+check "unengaged session: Edit on AGENTS.md is a no-op" bash -c \
+  "echo '{\"tool_name\":\"Edit\",\"tool_input\":{\"file_path\":\"$TGT/AGENTS.md\"},\"session_id\":\"$UNSID\"}' | '$PLUGIN/hooks/guard-docs.sh' | wc -c | tr -d '[:space:]' | grep -qx 0"
 check "Edit on AGENTS.md denied" bash -c \
-  "echo '{\"tool_name\":\"Edit\",\"tool_input\":{\"file_path\":\"$TGT/AGENTS.md\"}}' | '$PLUGIN/hooks/guard-docs.sh' | jq -e '.hookSpecificOutput.permissionDecision == \"deny\"'"
+  "echo '{\"tool_name\":\"Edit\",\"tool_input\":{\"file_path\":\"$TGT/AGENTS.md\"},\"session_id\":\"$SID\"}' | '$PLUGIN/hooks/guard-docs.sh' | jq -e '.hookSpecificOutput.permissionDecision == \"deny\"'"
 check "Edit elsewhere allowed" bash -c \
-  "echo '{\"tool_name\":\"Edit\",\"tool_input\":{\"file_path\":\"$TGT/src/foo.ts\"}}' | '$PLUGIN/hooks/guard-docs.sh' | wc -c | tr -d '[:space:]' | grep -qx 0"
+  "echo '{\"tool_name\":\"Edit\",\"tool_input\":{\"file_path\":\"$TGT/src/foo.ts\"},\"session_id\":\"$SID\"}' | '$PLUGIN/hooks/guard-docs.sh' | wc -c | tr -d '[:space:]' | grep -qx 0"
 
 echo "local tracker (git-native board):"
 TRK="$PLUGIN/scripts/tracker.mjs"
@@ -251,7 +265,7 @@ check "engine copied + paths rewritten (no plugin-root refs in commands)" bash -
 check "namespace rewritten (/autodev-*)" bash -c "! grep -rq '/autodev:' '$T4/.claude/commands'"
 check "team settings merged, not clobbered" bash -c "jq -e '.permissions.allow[0]==\"Bash(ls:*)\" and ([.hooks.SessionStart[].hooks[].command] | any(contains(\"team-hook\")))' '$T4/.claude/settings.json'"
 check "vendored concierge hook runs standalone" bash -c "echo '{\"cwd\":\"$T4\"}' | '$T4/.autodev/engine/hooks/session-signal.sh' | jq -e '.hookSpecificOutput.additionalContext | contains(\"You are\")'"
-check "vendored push guard denies main" bash -c "echo '{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git push origin main\"},\"cwd\":\"$T4\"}' | '$T4/.autodev/engine/hooks/guard-push.sh' | jq -e '.hookSpecificOutput.permissionDecision==\"deny\"'"
+check "vendored push guard denies main" bash -c "echo '{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git push origin main\"},\"cwd\":\"$T4\",\"session_id\":\"$SID\"}' | '$T4/.autodev/engine/hooks/guard-push.sh' | jq -e '.hookSpecificOutput.permissionDecision==\"deny\"'"
 check "engine stamped vendored + versioned" bash -c "jq -e '.engine.mode==\"vendored\" and .engine.version' '$T4/.autodev/deployment.json'"
 bash "$PLUGIN/install.sh" "$T4" >/dev/null 2>&1
 check "re-install idempotent (our hook once)" bash -c "jq -e '[.hooks.SessionStart[].hooks[].command | select(contains(\".autodev/engine\"))] | length == 1' '$T4/.claude/settings.json'"
@@ -262,6 +276,7 @@ bash "$PLUGIN/scripts/migrate-vendored.sh" "$T4" >/dev/null 2>&1
 check "migrate cleans NEW vendored layout too (engine dir + commands + hooks)" bash -c \
   "! test -d '$T4/.autodev/engine' && ! test -f '$T4/.claude/commands/autodev-loop.md' && jq -e '[.hooks[]?[]?.hooks[]?.command // empty] | all(contains(\".autodev/engine\") | not)' '$T4/.claude/settings.json' && jq -e '[.hooks.SessionStart[].hooks[].command] | any(contains(\"team-hook\"))' '$T4/.claude/settings.json'"
 rm -rf "$T4"
+rm -f "$MARKDIR/$SID" "$MARKDIR/$UNSID"
 
 echo
 if [[ $FAIL -eq 0 ]]; then echo "smoke: PASS"; else echo "smoke: FAIL"; fi
