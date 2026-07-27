@@ -31,7 +31,9 @@ Re-run this `cp` after every plugin update to pick up fixes.
 REPO=/absolute/path/to/the/client/repo
 CLIENT=$(jq -r '.client_name' "$REPO/.autodev/deployment.json" | tr '[:upper:] ' '[:lower:]-')
 TICK_MIN=$(jq -r '.execution.tick_interval_minutes' "$REPO/.autodev/deployment.json")
-RUN_HOME=$(jq -r '.runner.home_dir' "$REPO/.autodev/deployment.json")
+source "${CLAUDE_PLUGIN_ROOT}/scripts/lib/config.sh"
+autodev_resolve_config "$REPO"
+RUN_HOME=$(autodev_cfg_get runner.home_dir "~/.autodev")
 RUN_HOME="${RUN_HOME/#\~/$HOME}"
 
 render() { # <program> <label-suffix> -> writes ~/Library/LaunchAgents/com.autodev.$CLIENT.$2.plist

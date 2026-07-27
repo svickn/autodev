@@ -65,5 +65,8 @@ comment trail for every action — instead of one long chat you have to babysit.
 
 **Can my team use it — or several instances on one board?**
 Yes. Teammates just install the plugin; the committed `.autodev/deployment.json`
-does the rest. Each instance only touches tickets tagged with its own label, so
-several autoDevs — and your team's own tickets — coexist on one board safely.
+does the rest — each teammate additionally gets their own
+`.autodev/deployment.local.json` (never committed; `/autodev:init` writes it) for
+their repo path and runner paths. Each instance only touches tickets tagged with
+its own label (optionally overridden per-machine in the local file), so several
+autoDevs — and your team's own tickets — coexist on one board safely.
