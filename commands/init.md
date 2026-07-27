@@ -67,7 +67,11 @@ Set up autoDev for **this repo**. Safe to re-run any time to reconfigure.
    Then read `${CLAUDE_PLUGIN_ROOT}/reference/deployment.local.example.json` and
    write `.autodev/deployment.local.json` with that structure: `repo.local_path`
    = the absolute path detected in step 2, `runner.*` left at the example's
-   defaults. This file is per-machine and must never be committed — append
+   defaults. If that file already exists, leave the values already configured in
+   it alone — only add keys it's missing and refresh `repo.local_path` to the path
+   detected in step 2 (a re-run must never reset a customized `runner.home_dir`,
+   `runner.logs_dir`, or a token-file override back to the example's default).
+   This file is per-machine and must never be committed — append
    `.autodev/deployment.local.json` to the repo's `.gitignore` (create the file
    with just that one line if it doesn't exist yet; if it exists and already
    ignores it, leave it alone).
