@@ -8,7 +8,9 @@
 # Local file resolution (first found wins): repo-local .autodev/deployment.local.json,
 # then ~/.config/autodev/<client_name>/deployment.local.json, then neither (legacy
 # fallback — autodev_cfg_get reads straight from deployment.json in that case).
-# $AUTODEV_LOCAL_CONFIG (pre-set before sourcing) forces an explicit local-file path.
+# $AUTODEV_LOCAL_CONFIG (pre-set before sourcing) forces an explicit local-file path;
+# if that path doesn't exist, resolution yields no local file at all (it does NOT fall
+# back to repo-local/global discovery).
 
 autodev_resolve_config() {
   local repo="${1:?autodev_resolve_config: repo path required}"
@@ -16,8 +18,11 @@ autodev_resolve_config() {
   local forced="${AUTODEV_LOCAL_CONFIG:-}"
   AUTODEV_LOCAL_CONFIG=""
 
-  if [[ -n "$forced" && -f "$forced" ]]; then
-    AUTODEV_LOCAL_CONFIG="$forced"
+  if [[ -n "$forced" ]]; then
+    # An explicit override wins outright — and when it points at a path that isn't
+    # there, resolution ends with no local file rather than silently falling back to
+    # repo-local/global discovery (matches config.mjs's findLocalConfig()).
+    [[ -f "$forced" ]] && AUTODEV_LOCAL_CONFIG="$forced"
   elif [[ -f "$repo/.autodev/deployment.local.json" ]]; then
     AUTODEV_LOCAL_CONFIG="$repo/.autodev/deployment.local.json"
   elif [[ -f "$AUTODEV_PROJECT_CONFIG" ]]; then
