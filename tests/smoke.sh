@@ -449,6 +449,25 @@ check "doctor's missing-token message names the overridden api_token_file path" 
   'echo "$DCOUT" | grep -qF "$TOKDIR3/custom.token"'
 rm -rf "$DC" "$TOKDIR3"
 
+echo "config split — upgrade-config.sh migration:"
+UA=$(mktemp -d); mkdir -p "$UA/.autodev"
+jq '.client_name="UpA" | .repo.local_path="/old/inline/path" | .runner.home_dir="/old/run"' \
+  "$PLUGIN/reference/deployment.example.json" > "$UA/.autodev/deployment.json"
+bash "$PLUGIN/scripts/upgrade-config.sh" "$UA" >/dev/null
+check "split creates deployment.local.json with the moved values" bash -c \
+  "jq -e '.repo.local_path==\"/old/inline/path\" and .runner.home_dir==\"/old/run\"' '$UA/.autodev/deployment.local.json'"
+check "split removes the fields from deployment.json" bash -c \
+  "jq -e '(.repo.local_path == null) and (.runner == null)' '$UA/.autodev/deployment.json'"
+check "split is idempotent (second run leaves local file untouched)" bash -c \
+  "cp '$UA/.autodev/deployment.local.json' '$UA/before.json'; bash '$PLUGIN/scripts/upgrade-config.sh' '$UA' >/dev/null; diff -q '$UA/before.json' '$UA/.autodev/deployment.local.json' >/dev/null"
+rm -rf "$UA"
+
+UB=$(mktemp -d); mkdir -p "$UB/.autodev"
+jq '.client_name="UpB"' "$PLUGIN/reference/deployment.example.json" > "$UB/.autodev/deployment.json"
+bash "$PLUGIN/scripts/upgrade-config.sh" "$UB" >/dev/null
+check "no legacy fields present -> no local file created" bash -c "! test -f '$UB/.autodev/deployment.local.json'"
+rm -rf "$UB"
+
 echo
 if [[ $FAIL -eq 0 ]]; then echo "smoke: PASS"; else echo "smoke: FAIL"; fi
 exit $FAIL

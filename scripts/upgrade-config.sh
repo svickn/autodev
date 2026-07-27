@@ -4,14 +4,34 @@
 # tracker.instance_label/mirror, qa.visual_qa/test_layers, …) with their defaults;
 # NEVER changes a value the operator already set (existing values always win).
 # The example's "_note" documentation keys are stripped so client configs stay lean.
-# Idempotent; prints exactly which keys were added. Usage: upgrade-config.sh [repo]
+# Also splits legacy-inline local-only fields (repo.local_path, runner.*) out into
+# .autodev/deployment.local.json (gitignored) the first time it runs on an unsplit
+# config — never touches a local file that already exists.
+# Idempotent; prints exactly what it added/split. Usage: upgrade-config.sh [repo]
 set -uo pipefail
 
 REPO="${1:-$(git rev-parse --show-toplevel 2>/dev/null || echo .)}"
 CFG="$REPO/.autodev/deployment.json"
+LOCAL="$REPO/.autodev/deployment.local.json"
 EXAMPLE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/reference/deployment.example.json"
 [[ -f "$CFG" ]] || { echo "no $CFG — nothing to upgrade (run /autodev:init to configure)"; exit 0; }
 jq empty "$CFG" 2>/dev/null || { echo "✗ $CFG is not valid JSON — fix it first" >&2; exit 1; }
+
+# --- split: move legacy-inline local-only fields out to deployment.local.json ---
+if [[ ! -f "$LOCAL" ]]; then
+  LOCAL_CONTENT=$(jq '
+    def paths_list: [["repo","local_path"],["runner","home_dir"],["runner","heartbeat_file"],["runner","rate_limited_file"],["runner","logs_dir"]];
+    . as $cfg
+    | reduce paths_list[] as $p
+        ({}; ($cfg | getpath($p)) as $v | if $v != null then setpath($p; $v) else . end)
+  ' "$CFG")
+  if [[ "$(jq -c . <<<"$LOCAL_CONTENT")" != "{}" ]]; then
+    echo "$LOCAL_CONTENT" > "$LOCAL"
+    jq 'del(.repo.local_path, .runner)' "$CFG" > "$CFG.tmp" && mv "$CFG.tmp" "$CFG"
+    echo "✓ split legacy local fields into $LOCAL:"
+    jq -r '[paths(scalars)] | map(join(".")) | .[] | "    + " + .' <<<"$LOCAL_CONTENT"
+  fi
+fi
 
 BEFORE=$(jq -c '[paths(scalars)]' "$CFG")
 # defaults (notes stripped, identity/example-only fields dropped) deep-merged UNDER
