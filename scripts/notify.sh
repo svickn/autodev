@@ -11,7 +11,7 @@
 set -uo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO="${1:?usage: notify.sh <repo-path> limited|resumed|stalled <args>}"
+REPO="${1:?usage: notify.sh <repo-path> \{limited <epoch>|resumed|stalled <age>\}}"
 export AUTODEV_CONFIG="$REPO/.autodev/deployment.json"
 KIND="${2:-}"
 source "$HERE/lib/config.sh"
