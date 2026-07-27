@@ -360,6 +360,24 @@ check "shortcut.mjs token-missing error names the overridden api_token_file path
   "cd '$CTOK2' && SHORTCUT_API_TOKEN= node '$PLUGIN/scripts/shortcut.mjs' whoami 2>&1 | grep -qF '$TOKDIR2/my.shortcut.token'"
 rm -rf "$CTOK2" "$TOKDIR2"
 
+# report.mjs is the 4th direct Linear consumer — it must honor the same override.
+# The override points at a missing file while the DEFAULT location has a real token:
+# before the fix report.mjs read the default and tried to post; now it resolves the
+# override, finds nothing, and reports no token (its loadToken() stays soft — null,
+# not a die — which is the pre-existing failure mode and is preserved).
+CTOK3=$(mktemp -d); git -C "$CTOK3" init -q; mkdir -p "$CTOK3/.autodev"
+jq '.client_name="CfgTok3" | .tracker.kind="local" | .reporting.cadence="1m" | .reporting.destination="linear" | .reporting.linear_issue="ISSUE-1"' \
+  "$PLUGIN/reference/deployment.example.json" > "$CTOK3/.autodev/deployment.json"
+TOKHOME=$(mktemp -d); mkdir -p "$TOKHOME/.config/autodev"
+echo "default-location-token" > "$TOKHOME/.config/autodev/CfgTok3.linear.token"
+RUNHOME3=$(mktemp -d)
+cat > "$CTOK3/.autodev/deployment.local.json" <<EOF
+{"repo":{"local_path":"$CTOK3"},"runner":{"home_dir":"$RUNHOME3"},"tracker":{"linear":{"api_token_file":"$TOKHOME/absent.linear.token"}}}
+EOF
+check "report.mjs honors tracker.linear.api_token_file (no fallback to the default path)" bash -c \
+  "cd '$CTOK3' && LINEAR_API_TOKEN= HOME='$TOKHOME' node '$PLUGIN/scripts/report.mjs' --force 2>&1 >/dev/null | grep -q 'no linear_issue/token'"
+rm -rf "$CTOK3" "$TOKHOME" "$RUNHOME3"
+
 echo "shared config loader (scripts/lib/config.sh precedence):"
 CFGSH="$PLUGIN/scripts/lib/config.sh"
 
@@ -406,12 +424,51 @@ autodev_resolve_config "$SD"
 EOF
 check "default returned when neither local file nor inline value exists" bash "$SD/probe.sh"
 
-rm -rf "$SA" "$SB" "$SC" "$FAKEHOME3" "$SD"
+# $AUTODEV_LOCAL_CONFIG is an explicit override: when it points at a path that isn't
+# there, resolution ends with NO local file — it must not silently fall back to the
+# repo-local file (config.mjs's findLocalConfig() returns null outright; the two
+# implementations have to agree or doctor.sh and report.mjs contradict each other).
+SE=$(mktemp -d); mkdir -p "$SE/.autodev"
+jq '.client_name="ShE"' "$PLUGIN/reference/deployment.example.json" > "$SE/.autodev/deployment.json"
+echo '{"repo":{"local_path":"/repo-local/must-not-be-used"}}' > "$SE/.autodev/deployment.local.json"
+cat > "$SE/probe.sh" <<EOF
+#!/usr/bin/env bash
+source "$CFGSH"
+autodev_resolve_config "$SE"
+[[ -z "\$AUTODEV_LOCAL_CONFIG" && "\$(autodev_cfg_get repo.local_path NONE)" == "NONE" ]]
+EOF
+check "forced AUTODEV_LOCAL_CONFIG at a missing path does not fall back to repo-local" \
+  bash -c "AUTODEV_LOCAL_CONFIG='$SE/nonexistent.json' bash '$SE/probe.sh'"
+check "…and config.mjs agrees (same env, same repo, no local file resolved)" \
+  bash -c "AUTODEV_LOCAL_CONFIG='$SE/nonexistent.json' node '$PROBE' '$CFGLIB' '$SE' '' false"
+check "unset AUTODEV_LOCAL_CONFIG still falls through to repo-local" \
+  bash -c "unset AUTODEV_LOCAL_CONFIG; source '$CFGSH'; autodev_resolve_config '$SE'; [[ \"\$(autodev_cfg_get repo.local_path NONE)\" == '/repo-local/must-not-be-used' ]]"
+
+rm -rf "$SA" "$SB" "$SC" "$FAKEHOME3" "$SD" "$SE"
 
 echo "24/7 timer scripts (devloop-tick.sh / watchdog.sh / notify.sh) — config.sh wiring:"
 check "devloop-tick.sh parses" bash -n "$PLUGIN/scripts/devloop-tick.sh"
 check "watchdog.sh parses" bash -n "$PLUGIN/scripts/watchdog.sh"
 check "notify.sh parses" bash -n "$PLUGIN/scripts/notify.sh"
+
+# These run without `set -e`, so a missing sibling lib/config.sh used to leave RUN_HOME
+# empty and exit 0 — watchdog.sh would become a silent permanent no-op after a vendored
+# copy that forgot scripts/lib/. Must be a loud, immediate failure instead.
+NOLIB=$(mktemp -d); NOLIBR=$(mktemp -d); mkdir -p "$NOLIBR/.autodev"
+jq '.client_name="NoLib" | .tracker.kind="local"' "$PLUGIN/reference/deployment.example.json" > "$NOLIBR/.autodev/deployment.json"
+cp "$PLUGIN/scripts/"{devloop-tick.sh,watchdog.sh,notify.sh} "$NOLIB/"
+for s in devloop-tick watchdog; do
+  check "$s.sh fails loudly when lib/config.sh isn't a sibling" bash -c \
+    "out=\$(bash '$NOLIB/$s.sh' '$NOLIBR' 2>&1); rc=\$?; [[ \$rc -ne 0 ]] && printf '%s' \"\$out\" | grep -q 'missing lib/config.sh'"
+done
+check "notify.sh fails loudly when lib/config.sh isn't a sibling" bash -c \
+  "out=\$(bash '$NOLIB/notify.sh' '$NOLIBR' stalled 60 2>&1); rc=\$?; [[ \$rc -ne 0 ]] && printf '%s' \"\$out\" | grep -q 'missing lib/config.sh'"
+rm -rf "$NOLIB" "$NOLIBR"
+
+# …and the documented vendoring step actually copies scripts/lib/ (the reason the above
+# failure mode was reachable at all).
+check "ops/launchd-timer.md's copy step includes scripts/lib/" \
+  grep -q 'cp -R "${CLAUDE_PLUGIN_ROOT}/scripts/lib" ~/.autodev/bin/' "$PLUGIN/ops/launchd-timer.md"
 
 WD=$(mktemp -d); git -C "$WD" init -q; mkdir -p "$WD/.autodev"
 jq '.client_name="WdCo" | .tracker.kind="local"' "$PLUGIN/reference/deployment.example.json" > "$WD/.autodev/deployment.json"
@@ -466,7 +523,60 @@ UB=$(mktemp -d); mkdir -p "$UB/.autodev"
 jq '.client_name="UpB"' "$PLUGIN/reference/deployment.example.json" > "$UB/.autodev/deployment.json"
 bash "$PLUGIN/scripts/upgrade-config.sh" "$UB" >/dev/null
 check "no legacy fields present -> no local file created" bash -c "! test -f '$UB/.autodev/deployment.local.json'"
+check "no legacy fields present -> no .gitignore conjured up" bash -c "! test -f '$UB/.gitignore'"
 rm -rf "$UB"
+
+# The split writes a never-committed file — it has to gitignore it too. /autodev:init
+# does this in prose, but loop.md runs upgrade-config.sh standalone then says "commit".
+UC=$(mktemp -d); mkdir -p "$UC/.autodev"
+jq '.client_name="UpC" | .repo.local_path="/old/inline"' "$PLUGIN/reference/deployment.example.json" > "$UC/.autodev/deployment.json"
+bash "$PLUGIN/scripts/upgrade-config.sh" "$UC" >/dev/null
+check "split creates .gitignore covering the local file when none exists" bash -c \
+  "grep -qxF '.autodev/deployment.local.json' '$UC/.gitignore'"
+rm -rf "$UC"
+
+UD=$(mktemp -d); mkdir -p "$UD/.autodev"
+jq '.client_name="UpD" | .repo.local_path="/old/inline"' "$PLUGIN/reference/deployment.example.json" > "$UD/.autodev/deployment.json"
+printf 'node_modules' > "$UD/.gitignore"   # no trailing newline — must not glue lines
+bash "$PLUGIN/scripts/upgrade-config.sh" "$UD" >/dev/null
+check "split appends to an existing .gitignore without clobbering it" bash -c \
+  "grep -qxF 'node_modules' '$UD/.gitignore' && grep -qxF '.autodev/deployment.local.json' '$UD/.gitignore'"
+rm -f "$UD/.autodev/deployment.local.json"
+jq '.repo.local_path="/old/inline/again"' "$UD/.autodev/deployment.json" > "$UD/t" && mv "$UD/t" "$UD/.autodev/deployment.json"
+bash "$PLUGIN/scripts/upgrade-config.sh" "$UD" >/dev/null
+check "gitignore entry is added once, not duplicated on a later split" bash -c \
+  "[[ \$(grep -cxF '.autodev/deployment.local.json' '$UD/.gitignore') -eq 1 ]]"
+rm -rf "$UD"
+
+# The split must move only the 5 enumerated leaves — deleting the whole .runner object
+# silently destroyed any custom/future runner.* key (present in neither file).
+UE=$(mktemp -d); mkdir -p "$UE/.autodev"
+jq '.client_name="UpE" | .repo.local_path="/old/inline" | .runner.home_dir="/old/run" | .runner.future_key="KEEP_ME"' \
+  "$PLUGIN/reference/deployment.example.json" > "$UE/.autodev/deployment.json"
+bash "$PLUGIN/scripts/upgrade-config.sh" "$UE" >/dev/null
+check "split preserves an unknown runner.* key in deployment.json" bash -c \
+  "jq -e '.runner.future_key==\"KEEP_ME\" and (.runner.home_dir==null)' '$UE/.autodev/deployment.json'"
+check "split still moves the enumerated runner.* leaves to the local file" bash -c \
+  "jq -e '.runner.home_dir==\"/old/run\" and (.runner.future_key==null)' '$UE/.autodev/deployment.local.json'"
+rm -rf "$UE"
+
+# A global local file is authoritative — creating a repo-local one from the stale
+# inline values would shadow it (repo-local wins the documented precedence order).
+UF=$(mktemp -d); mkdir -p "$UF/.autodev"
+jq '.client_name="UpF" | .repo.local_path="/stale/inline" | .runner.home_dir="/stale/run"' \
+  "$PLUGIN/reference/deployment.example.json" > "$UF/.autodev/deployment.json"
+FAKEHOME4=$(mktemp -d); mkdir -p "$FAKEHOME4/.config/autodev/UpF"
+echo '{"repo":{"local_path":"/real/global"},"runner":{"home_dir":"/real/run"}}' > "$FAKEHOME4/.config/autodev/UpF/deployment.local.json"
+UFOUT=$(HOME="$FAKEHOME4" bash "$PLUGIN/scripts/upgrade-config.sh" "$UF" 2>&1)
+check "global local file present -> no shadowing repo-local file created" bash -c \
+  "! test -f '$UF/.autodev/deployment.local.json'"
+check "global local file present -> redundant inline fields still stripped" bash -c \
+  "jq -e '(.repo.local_path == null) and (.runner == null)' '$UF/.autodev/deployment.json'"
+check "global local file present -> operator is told it was used" env UFOUT="$UFOUT" bash -c \
+  'echo "$UFOUT" | grep -q "used it instead of creating"'
+check "global local file itself is left untouched" bash -c \
+  "jq -e '.repo.local_path==\"/real/global\"' '$FAKEHOME4/.config/autodev/UpF/deployment.local.json'"
+rm -rf "$UF" "$FAKEHOME4"
 
 echo
 if [[ $FAIL -eq 0 ]]; then echo "smoke: PASS"; else echo "smoke: FAIL"; fi
