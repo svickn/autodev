@@ -18,6 +18,11 @@ echo "autoDev doctor — $CONFIG"
 
 [[ -f "$CONFIG" ]] || { bad "no deployment.json at $CONFIG"; exit 1; }
 command -v jq >/dev/null && ok "jq" || bad "jq missing (brew install jq)"
+source "$HERE/lib/config.sh"
+autodev_resolve_config "$ROOT"
+if [[ "$AUTODEV_CFG_LEGACY_SPLIT" == "true" ]]; then
+  warn "repo.local_path/runner.* still inline in deployment.json (pre-split config) — run /autodev:init or scripts/upgrade-config.sh to move them into .autodev/deployment.local.json"
+fi
 
 echo "tooling:"
 for t in node git claude; do
@@ -32,9 +37,17 @@ fi
 command -v braingrid >/dev/null && ok "braingrid" || warn "braingrid missing — engine will use the agent PRD/breakdown fallback"
 
 echo "repo:"
-REPO=$(jq -r '.repo.local_path' "$CONFIG")
+REPO="$ROOT"
 BRANCH=$(jq -r '.repo.default_branch' "$CONFIG")
-[[ -d "$REPO/.git" ]] && ok "repo at $REPO" || bad "repo.local_path not a git repo: $REPO"
+[[ -d "$REPO/.git" ]] && ok "running inside a git repo ($REPO)" || bad "not a git repo: $REPO"
+CONFIGURED_LOCAL_PATH=$(autodev_cfg_get repo.local_path "")
+if [[ -z "$CONFIGURED_LOCAL_PATH" ]]; then
+  warn "repo.local_path not set in .autodev/deployment.local.json — needed by report.mjs and the 24/7 timer (doctor itself uses this checkout directly)"
+elif [[ "$CONFIGURED_LOCAL_PATH" != "$REPO" ]]; then
+  warn "repo.local_path ($CONFIGURED_LOCAL_PATH) doesn't match this checkout ($REPO) — fix .autodev/deployment.local.json"
+else
+  ok "repo.local_path matches this checkout"
+fi
 git -C "$REPO" remote get-url origin >/dev/null 2>&1 && ok "origin remote present" || warn "no origin remote"
 git -C "$REPO" show-ref --verify --quiet "refs/heads/$BRANCH" 2>/dev/null \
   || git -C "$REPO" ls-remote --exit-code --heads origin "$BRANCH" >/dev/null 2>&1 \
@@ -87,11 +100,13 @@ echo "tracker ($(jq -r '.tracker.kind // "linear"' "$CONFIG")):"
 CLIENT=$(jq -r '.client_name' "$CONFIG")
 KIND=$(jq -r '.tracker.kind // "linear"' "$CONFIG")
 MIRROR=$(jq -r '.tracker.mirror.linear // false' "$CONFIG")
+LINEAR_TOKEN_FILE=$(autodev_cfg_get tracker.linear.api_token_file "$HOME/.config/autodev/$CLIENT.linear.token")
+SHORTCUT_TOKEN_FILE=$(autodev_cfg_get tracker.shortcut.api_token_file "$HOME/.config/autodev/$CLIENT.shortcut.token")
 if [[ "$KIND" == "local" ]]; then
   if OUT=$(node "$HERE/tracker.mjs" doctor 2>&1); then ok "$OUT"; else bad "$OUT"; fi
   if [[ "$MIRROR" == "true" ]]; then
     # mirroring is async/best-effort, so a missing token is a warn, not a fail
-    if [[ -n "${LINEAR_API_TOKEN:-}" ]] || [[ -f "$HOME/.config/autodev/$CLIENT.linear.token" ]]; then
+    if [[ -n "${LINEAR_API_TOKEN:-}" ]] || [[ -f "$LINEAR_TOKEN_FILE" ]]; then
       ok "mirror token present (flush with: node $HERE/tracker.mjs flush-mirror)"
     else
       warn "tracker.mirror.linear is on but no Linear token — ops will queue until one exists"
@@ -102,19 +117,19 @@ elif [[ "$KIND" == "shortcut" ]]; then
   SC_ENV=$(jq -r '.tracker.shortcut.api_token_env // ""' "$CONFIG"); [[ -n "$SC_ENV" ]] || SC_ENV="SHORTCUT_API_TOKEN"
   [[ "$(jq -r '.tracker.hierarchy // "issue"' "$CONFIG")" == "project" ]] && bad "tracker.hierarchy=project needs kind=linear (project statuses are Linear-only) — use hierarchy=issue with Shortcut"
   [[ "$(jq -r '.intake.mode // "cli"' "$CONFIG")" == "cli" ]] || bad "intake.mode=linear needs tracker.kind=linear — Shortcut deployments use cli intake"
-  if [[ -n "${!SC_ENV:-}" ]] || [[ -f "$HOME/.config/autodev/$CLIENT.shortcut.token" ]]; then
+  if [[ -n "${!SC_ENV:-}" ]] || [[ -f "$SHORTCUT_TOKEN_FILE" ]]; then
     ok "token present"
     # validates token + workflow + every configured state id against live Shortcut
     if OUT=$(node "$HERE/shortcut.mjs" doctor 2>&1); then ok "$OUT"; else bad "$OUT"; fi
   else
-    bad "no Shortcut token (\$$SC_ENV or ~/.config/autodev/$CLIENT.shortcut.token) — or set tracker.kind=local (no token needed)"
+    bad "no Shortcut token (\$$SC_ENV or $SHORTCUT_TOKEN_FILE) — or set tracker.kind=local (no token needed)"
   fi
-elif [[ -n "${LINEAR_API_TOKEN:-}" ]] || [[ -f "$HOME/.config/autodev/$CLIENT.linear.token" ]]; then
+elif [[ -n "${LINEAR_API_TOKEN:-}" ]] || [[ -f "$LINEAR_TOKEN_FILE" ]]; then
   ok "token present"
   # validates token + team + every configured status id against live Linear
   if OUT=$(node "$HERE/linear.mjs" doctor 2>&1); then ok "$OUT"; else bad "$OUT"; fi
 else
-  bad "no Linear token (\$LINEAR_API_TOKEN or ~/.config/autodev/$CLIENT.linear.token) — or set tracker.kind=local (no token needed)"
+  bad "no Linear token (\$LINEAR_API_TOKEN or $LINEAR_TOKEN_FILE) — or set tracker.kind=local (no token needed)"
 fi
 
 echo "braingrid:"

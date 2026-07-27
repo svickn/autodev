@@ -423,6 +423,32 @@ check "watchdog reads runner.home_dir from deployment.local.json (stalled issue 
   "cd '$WD' && node '$PLUGIN/scripts/tracker.mjs' list 2>/dev/null | grep -qi 'STALLED'"
 rm -rf "$WD" "$WDHOME"
 
+echo "doctor.sh — config split awareness:"
+DA=$(mktemp -d); git -C "$DA" init -q; mkdir -p "$DA/.autodev"
+jq '.client_name="DrA" | .tracker.kind="local" | .repo.local_path="/legacy/doctor" | .review.delivery="local_diff"' \
+  "$PLUGIN/reference/deployment.example.json" > "$DA/.autodev/deployment.json"
+DAOUT=$(cd "$DA" && bash "$PLUGIN/scripts/doctor.sh" 2>&1 || true)
+check "doctor warns on legacy-split (pre-split) config" env DAOUT="$DAOUT" bash -c \
+  'echo "$DAOUT" | grep -q "run /autodev:init or scripts/upgrade-config.sh"'
+rm -rf "$DA"
+
+DB=$(mktemp -d); DB=$(cd "$DB" && pwd -P); git -C "$DB" init -q; mkdir -p "$DB/.autodev"
+jq '.client_name="DrB" | .tracker.kind="local" | .review.delivery="local_diff"' "$PLUGIN/reference/deployment.example.json" > "$DB/.autodev/deployment.json"
+echo "{\"repo\":{\"local_path\":\"$DB\"}}" > "$DB/.autodev/deployment.local.json"
+DBOUT=$(cd "$DB" && bash "$PLUGIN/scripts/doctor.sh" 2>&1 || true)
+check "doctor does not warn once split (repo.local_path matches this checkout)" env DBOUT="$DBOUT" bash -c \
+  'echo "$DBOUT" | grep -q "repo.local_path matches this checkout" && ! echo "$DBOUT" | grep -q "run /autodev:init or scripts/upgrade-config.sh"'
+rm -rf "$DB"
+
+DC=$(mktemp -d); git -C "$DC" init -q; mkdir -p "$DC/.autodev"
+jq '.client_name="DrC" | .tracker.kind="linear" | .review.delivery="local_diff"' "$PLUGIN/reference/deployment.example.json" > "$DC/.autodev/deployment.json"
+TOKDIR3=$(mktemp -d)
+echo "{\"tracker\":{\"linear\":{\"api_token_file\":\"$TOKDIR3/custom.token\"}}}" > "$DC/.autodev/deployment.local.json"
+DCOUT=$(cd "$DC" && LINEAR_API_TOKEN= bash "$PLUGIN/scripts/doctor.sh" 2>&1 || true)
+check "doctor's missing-token message names the overridden api_token_file path" env DCOUT="$DCOUT" TOKDIR3="$TOKDIR3" bash -c \
+  'echo "$DCOUT" | grep -qF "$TOKDIR3/custom.token"'
+rm -rf "$DC" "$TOKDIR3"
+
 echo
 if [[ $FAIL -eq 0 ]]; then echo "smoke: PASS"; else echo "smoke: FAIL"; fi
 exit $FAIL
