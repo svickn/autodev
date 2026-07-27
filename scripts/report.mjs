@@ -43,7 +43,7 @@ if (!force && last && now - last < win) process.exit(0); // not due yet
 
 function loadToken() {
   if (process.env.LINEAR_API_TOKEN) return process.env.LINEAR_API_TOKEN.trim();
-  const f = join(homedir(), '.config', 'autodev', `${cfg.client_name || 'client'}.linear.token`);
+  const f = cfg.tracker?.linear?.api_token_file || join(homedir(), '.config', 'autodev', `${cfg.client_name || 'client'}.linear.token`);
   try { return readFileSync(f, 'utf8').trim(); } catch { return null; }
 }
 const token = loadToken();
