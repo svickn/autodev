@@ -278,6 +278,16 @@ check "migrate cleans NEW vendored layout too (engine dir + commands + hooks)" b
 rm -rf "$T4"
 rm -f "$MARKDIR/$SID" "$MARKDIR/$UNSID"
 
+echo "config split — schema (reference/deployment.example.json vs deployment.local.example.json):"
+check "example config no longer has repo.local_path" bash -c \
+  "! jq -e '.repo.local_path' '$PLUGIN/reference/deployment.example.json' >/dev/null 2>&1"
+check "example config no longer has a runner block" bash -c \
+  "! jq -e '.runner' '$PLUGIN/reference/deployment.example.json' >/dev/null 2>&1"
+check "local example declares repo.local_path + all 4 runner.* fields" bash -c \
+  "jq -e '.repo.local_path and .runner.home_dir and .runner.heartbeat_file and .runner.rate_limited_file and .runner.logs_dir' '$PLUGIN/reference/deployment.local.example.json'"
+check "local example declares the optional overrides" bash -c \
+  "jq -e '(.tracker.instance_label == \"\") and (.tracker.linear.api_token_file == \"\") and (.tracker.shortcut.api_token_file == \"\")' '$PLUGIN/reference/deployment.local.example.json'"
+
 echo
 if [[ $FAIL -eq 0 ]]; then echo "smoke: PASS"; else echo "smoke: FAIL"; fi
 exit $FAIL

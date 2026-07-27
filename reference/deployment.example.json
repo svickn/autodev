@@ -10,12 +10,12 @@
   },
 
   "repo": {
-    "local_path": "/absolute/path/to/client/repo",
     "url": "https://github.com/AcmeCo/their-repo",
     "default_branch": "main",
     "feature_branch_prefix": "feature/",
     "story_branch_prefix": "autodev"
   },
+  "_repo_local_path_note": "repo.local_path moved to the never-committed .autodev/deployment.local.json (see reference/deployment.local.example.json) — it's a per-machine absolute path, not project config. /autodev:init writes it there.",
 
   "merge_policy": {
     "story_to_feature": "squash",
@@ -300,12 +300,5 @@
       "verdict": "reality-checker",
       "live_evidence": "evidence-collector"
     }
-  },
-
-  "runner": {
-    "home_dir": "~/autodev",
-    "heartbeat_file": "~/autodev/heartbeat",
-    "rate_limited_file": "~/autodev/rate-limited-until",
-    "logs_dir": "~/autodev/logs"
   }
 }
