@@ -331,6 +331,35 @@ check "tracker.instance_label local override wins" node "$PROBE" "$CFGLIB" "$CF"
 
 rm -rf "$CA" "$CB" "$CC" "$CD" "$CE" "$CF"
 
+echo "config split — .mjs callers wired to scripts/lib/config.mjs:"
+CGR=$(mktemp -d); mkdir -p "$CGR/.autodev"; git -C "$CGR" init -q
+jq '.client_name="CfgReport" | .tracker.kind="local" | .reporting.cadence="1m"' \
+  "$PLUGIN/reference/deployment.example.json" > "$CGR/.autodev/deployment.json"
+RUNHOME=$(mktemp -d)
+cat > "$CGR/.autodev/deployment.local.json" <<EOF
+{"repo":{"local_path":"$CGR"},"runner":{"home_dir":"$RUNHOME"}}
+EOF
+check "report.mjs picks up runner.home_dir from deployment.local.json" bash -c \
+  "cd '$CGR' && node '$PLUGIN/scripts/report.mjs' --force >/dev/null && test -f '$RUNHOME/logs/report.log'"
+rm -rf "$CGR" "$RUNHOME"
+
+echo "token file override (tracker.linear.api_token_file / tracker.shortcut.api_token_file):"
+CTOK=$(mktemp -d); mkdir -p "$CTOK/.autodev"
+jq '.client_name="CfgTok"' "$PLUGIN/reference/deployment.example.json" > "$CTOK/.autodev/deployment.json"
+TOKDIR=$(mktemp -d)
+echo "{\"tracker\":{\"linear\":{\"api_token_file\":\"$TOKDIR/my.linear.token\"}}}" > "$CTOK/.autodev/deployment.local.json"
+check "linear.mjs token-missing error names the overridden api_token_file path" bash -c \
+  "cd '$CTOK' && LINEAR_API_TOKEN= node '$PLUGIN/scripts/linear.mjs' whoami 2>&1 | grep -qF '$TOKDIR/my.linear.token'"
+rm -rf "$CTOK" "$TOKDIR"
+
+CTOK2=$(mktemp -d); mkdir -p "$CTOK2/.autodev"
+jq '.client_name="CfgTok2"' "$PLUGIN/reference/deployment.example.json" > "$CTOK2/.autodev/deployment.json"
+TOKDIR2=$(mktemp -d)
+echo "{\"tracker\":{\"shortcut\":{\"api_token_file\":\"$TOKDIR2/my.shortcut.token\"}}}" > "$CTOK2/.autodev/deployment.local.json"
+check "shortcut.mjs token-missing error names the overridden api_token_file path" bash -c \
+  "cd '$CTOK2' && SHORTCUT_API_TOKEN= node '$PLUGIN/scripts/shortcut.mjs' whoami 2>&1 | grep -qF '$TOKDIR2/my.shortcut.token'"
+rm -rf "$CTOK2" "$TOKDIR2"
+
 echo
 if [[ $FAIL -eq 0 ]]; then echo "smoke: PASS"; else echo "smoke: FAIL"; fi
 exit $FAIL
