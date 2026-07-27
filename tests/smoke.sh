@@ -360,6 +360,69 @@ check "shortcut.mjs token-missing error names the overridden api_token_file path
   "cd '$CTOK2' && SHORTCUT_API_TOKEN= node '$PLUGIN/scripts/shortcut.mjs' whoami 2>&1 | grep -qF '$TOKDIR2/my.shortcut.token'"
 rm -rf "$CTOK2" "$TOKDIR2"
 
+echo "shared config loader (scripts/lib/config.sh precedence):"
+CFGSH="$PLUGIN/scripts/lib/config.sh"
+
+SA=$(mktemp -d); mkdir -p "$SA/.autodev"
+jq '.client_name="ShA" | .repo.local_path="/legacy/sh"' "$PLUGIN/reference/deployment.example.json" > "$SA/.autodev/deployment.json"
+cat > "$SA/probe.sh" <<EOF
+#!/usr/bin/env bash
+source "$CFGSH"
+autodev_resolve_config "$SA"
+[[ "\$(autodev_cfg_get repo.local_path)" == "/legacy/sh" && "\$AUTODEV_CFG_LEGACY_SPLIT" == "true" ]]
+EOF
+check "legacy fallback: repo.local_path readable, legacy flag true" bash "$SA/probe.sh"
+
+SB=$(mktemp -d); mkdir -p "$SB/.autodev"
+jq '.client_name="ShB"' "$PLUGIN/reference/deployment.example.json" > "$SB/.autodev/deployment.json"
+echo '{"repo":{"local_path":"/repo-local/sh"},"runner":{"home_dir":"/rh"}}' > "$SB/.autodev/deployment.local.json"
+cat > "$SB/probe.sh" <<EOF
+#!/usr/bin/env bash
+source "$CFGSH"
+autodev_resolve_config "$SB"
+[[ "\$(autodev_cfg_get repo.local_path)" == "/repo-local/sh" && "\$(autodev_cfg_get runner.home_dir '~/.autodev')" == "/rh" && "\$AUTODEV_CFG_LEGACY_SPLIT" == "false" ]]
+EOF
+check "repo-local file resolved, not legacy" bash "$SB/probe.sh"
+
+SC=$(mktemp -d); mkdir -p "$SC/.autodev"
+jq '.client_name="ShC"' "$PLUGIN/reference/deployment.example.json" > "$SC/.autodev/deployment.json"
+FAKEHOME3=$(mktemp -d); mkdir -p "$FAKEHOME3/.config/autodev/ShC"
+echo '{"repo":{"local_path":"/global/sh"}}' > "$FAKEHOME3/.config/autodev/ShC/deployment.local.json"
+cat > "$SC/probe.sh" <<EOF
+#!/usr/bin/env bash
+source "$CFGSH"
+autodev_resolve_config "$SC"
+[[ "\$(autodev_cfg_get repo.local_path)" == "/global/sh" ]]
+EOF
+check "global file used when no repo-local file" bash -c "HOME='$FAKEHOME3' bash '$SC/probe.sh'"
+
+SD=$(mktemp -d); mkdir -p "$SD/.autodev"
+jq '.client_name="ShD"' "$PLUGIN/reference/deployment.example.json" > "$SD/.autodev/deployment.json"
+cat > "$SD/probe.sh" <<EOF
+#!/usr/bin/env bash
+source "$CFGSH"
+autodev_resolve_config "$SD"
+[[ "\$(autodev_cfg_get runner.home_dir '~/.autodev')" == "~/.autodev" && "\$AUTODEV_CFG_LEGACY_SPLIT" == "false" ]]
+EOF
+check "default returned when neither local file nor inline value exists" bash "$SD/probe.sh"
+
+rm -rf "$SA" "$SB" "$SC" "$FAKEHOME3" "$SD"
+
+echo "24/7 timer scripts (devloop-tick.sh / watchdog.sh / notify.sh) — config.sh wiring:"
+check "devloop-tick.sh parses" bash -n "$PLUGIN/scripts/devloop-tick.sh"
+check "watchdog.sh parses" bash -n "$PLUGIN/scripts/watchdog.sh"
+check "notify.sh parses" bash -n "$PLUGIN/scripts/notify.sh"
+
+WD=$(mktemp -d); git -C "$WD" init -q; mkdir -p "$WD/.autodev"
+jq '.client_name="WdCo" | .tracker.kind="local"' "$PLUGIN/reference/deployment.example.json" > "$WD/.autodev/deployment.json"
+WDHOME=$(mktemp -d)
+echo "{\"runner\":{\"home_dir\":\"$WDHOME\"}}" > "$WD/.autodev/deployment.local.json"
+touch -t "$(date -v-2H +%Y%m%d%H%M 2>/dev/null || date -d '2 hours ago' +%Y%m%d%H%M)" "$WDHOME/heartbeat"
+bash "$PLUGIN/scripts/watchdog.sh" "$WD" >/dev/null 2>&1
+check "watchdog reads runner.home_dir from deployment.local.json (stalled issue filed on the board)" bash -c \
+  "cd '$WD' && node '$PLUGIN/scripts/tracker.mjs' list 2>/dev/null | grep -qi 'STALLED'"
+rm -rf "$WD" "$WDHOME"
+
 echo
 if [[ $FAIL -eq 0 ]]; then echo "smoke: PASS"; else echo "smoke: FAIL"; fi
 exit $FAIL

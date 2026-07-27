@@ -11,7 +11,9 @@ set -uo pipefail
 REPO="${1:?usage: watchdog.sh <repo-path>}"
 CONFIG="$REPO/.autodev/deployment.json"
 [[ -f "$CONFIG" ]] || { echo "watchdog: no $CONFIG" >&2; exit 1; }
-RUN_HOME="$(jq -r '.runner.home_dir // "~/.autodev"' "$CONFIG")"
+source "$(dirname "$0")/lib/config.sh"
+autodev_resolve_config "$REPO"
+RUN_HOME="$(autodev_cfg_get runner.home_dir "~/.autodev")"
 RUN_HOME="${RUN_HOME/#\~/$HOME}"
 HEARTBEAT="$RUN_HOME/heartbeat"
 PAUSE="$RUN_HOME/rate-limited-until"
