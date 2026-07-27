@@ -312,6 +312,16 @@ always preempts; the drain never re-ranks the team's priority order.
   (robust retry/backoff; resolves stage keys + identifiers from `.autodev/deployment.json`).
   **Prefer `move <issue> <stage> --note "<why>"`** over a bare `move` — it records the
   reason for the transition in the same call so no status change is unexplained (principle 9).
+- **Local overrides (`.autodev/deployment.local.json`, gitignored — never committed):**
+  a few fields can be overridden per-machine/operator without touching the shared
+  `deployment.json` — most notably **`tracker.instance_label`** (running two autoDev
+  instances against the same shared board from different machines). Wherever this
+  manual or another reference doc says "read `tracker.instance_label`" (or any other
+  overridable field), check `.autodev/deployment.local.json` first (repo-local), then
+  `~/.config/autodev/<client_name>/deployment.local.json` (global), and use that value
+  if either sets it non-empty; otherwise use `deployment.json`'s value as today.
+  Everything read *through* `tracker.mjs`/`linear.mjs`/`shortcut.mjs` already resolves
+  this automatically — this only matters when reading a config value directly.
 - **Personas resolve-or-fallback (EVERY spawn site — devloop, deep-qa, repro, breakdown):**
   before spawning a persona, run `bash ${CLAUDE_PLUGIN_ROOT}/scripts/ensure-personas.sh` —
   it resolves the deployment's roster and (when `personas.auto_install`, default true)
