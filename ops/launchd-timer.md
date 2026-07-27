@@ -15,15 +15,20 @@ pull request before merging).
 ## 1. Copy the scripts to a stable path
 
 ```bash
-mkdir -p ~/.autodev/bin
+mkdir -p ~/.autodev/bin/lib
 cp "${CLAUDE_PLUGIN_ROOT}/scripts/"{devloop-tick.sh,watchdog.sh,notify.sh,tracker.mjs,linear.mjs,report.mjs} ~/.autodev/bin/
+cp -R "${CLAUDE_PLUGIN_ROOT}/scripts/lib" ~/.autodev/bin/
 chmod +x ~/.autodev/bin/*.sh
 ```
 
-All six are copied together (not just the three timer scripts) because
+All six scripts are copied together (not just the three timer scripts) because
 `devloop-tick.sh`/`watchdog.sh`/`notify.sh` call `tracker.mjs`/`linear.mjs`/
-`report.mjs` via `$(dirname "$0")` — they need to be siblings at runtime.
-Re-run this `cp` after every plugin update to pick up fixes.
+`report.mjs` via `$(dirname "$0")` — they need to be siblings at runtime. The
+`scripts/lib/` directory comes along for the same reason: every one of those six
+loads the shared config resolver as a sibling path (`lib/config.sh` for the bash
+scripts, `./lib/config.mjs` for the `.mjs` ones), so `~/.autodev/bin/lib/` must
+exist next to them or nothing can resolve `runner.home_dir`.
+Re-run both `cp` lines after every plugin update to pick up fixes.
 
 ## 2. Render the launchd plists
 

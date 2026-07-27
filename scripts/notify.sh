@@ -14,7 +14,7 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO="${1:?usage: notify.sh <repo-path> \{limited <epoch>|resumed|stalled <age>\}}"
 export AUTODEV_CONFIG="$REPO/.autodev/deployment.json"
 KIND="${2:-}"
-source "$HERE/lib/config.sh"
+source "$HERE/lib/config.sh" || { echo "notify.sh: missing lib/config.sh next to $0" >&2; exit 1; }
 autodev_resolve_config "$REPO"
 RUN_HOME="$(autodev_cfg_get runner.home_dir "~/.autodev")"
 RUN_HOME="${RUN_HOME/#\~/$HOME}"

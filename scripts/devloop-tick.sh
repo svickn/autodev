@@ -14,7 +14,7 @@ set -uo pipefail
 REPO="${1:?usage: devloop-tick.sh <repo-path>}"
 CONFIG="$REPO/.autodev/deployment.json"
 [[ -f "$CONFIG" ]] || { echo "devloop-tick: no $CONFIG" >&2; exit 1; }
-source "$(dirname "$0")/lib/config.sh"
+source "$(dirname "$0")/lib/config.sh" || { echo "devloop-tick: missing lib/config.sh next to $0" >&2; exit 1; }
 autodev_resolve_config "$REPO"
 
 RUN_HOME="$(autodev_cfg_get runner.home_dir "~/.autodev")"
