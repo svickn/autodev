@@ -23,6 +23,8 @@ Set up autoDev for **this repo**. Safe to re-run any time to reconfigure.
 2. Detect what you can from the repo, silently, before asking anything:
    - Default branch: `git symbolic-ref --short refs/remotes/origin/HEAD` (fall back
      to the current branch via `git symbolic-ref --short HEAD`).
+   - Absolute repo path (for `repo.local_path`, written to the local config in step 4):
+     `git rev-parse --show-toplevel`.
    - Package manager: `bun.lockb`/`bun.lock` → bun · `pnpm-lock.yaml` → pnpm ·
      `yarn.lock` → yarn · `package.json` present (else) → npm.
    - If a package manager was detected, read its `package.json` `scripts` for
@@ -61,6 +63,14 @@ Set up autoDev for **this repo**. Safe to re-run any time to reconfigure.
    writes into `.claude/settings.json` or over a team-authored file — its only
    `.claude/` artifact is step 6's identity pointer, so there is nothing to
    preserve-vs-overwrite).
+
+   Then read `${CLAUDE_PLUGIN_ROOT}/reference/deployment.local.example.json` and
+   write `.autodev/deployment.local.json` with that structure: `repo.local_path`
+   = the absolute path detected in step 2, `runner.*` left at the example's
+   defaults. This file is per-machine and must never be committed — append
+   `.autodev/deployment.local.json` to the repo's `.gitignore` (create the file
+   with just that one line if it doesn't exist yet; if it exists and already
+   ignores it, leave it alone).
 5. Create the `.autodev` runtime directories: `mkdir -p .autodev/board .autodev/logs`
    (harmless if `tracker.kind` ends up `linear` — `board/` just stays empty; the
    git-native board and the operator digest log both land here on first use).
