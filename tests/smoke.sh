@@ -288,6 +288,49 @@ check "local example declares repo.local_path + all 4 runner.* fields" bash -c \
 check "local example declares the optional overrides" bash -c \
   "jq -e '(.tracker.instance_label == \"\") and (.tracker.linear.api_token_file == \"\") and (.tracker.shortcut.api_token_file == \"\")' '$PLUGIN/reference/deployment.local.example.json'"
 
+echo "shared config loader (scripts/lib/config.mjs precedence):"
+CFGLIB="$PLUGIN/scripts/lib/config.mjs"
+PROBE="$PLUGIN/tests/probe-config.mjs"
+
+CA=$(mktemp -d); mkdir -p "$CA/.autodev"
+jq '.client_name="CfgA" | .repo.local_path="/legacy/path"' "$PLUGIN/reference/deployment.example.json" > "$CA/.autodev/deployment.json"
+check "legacy fallback: inline repo.local_path read, isLegacySplit=true" node "$PROBE" "$CFGLIB" "$CA" "/legacy/path" true
+
+CB=$(mktemp -d); mkdir -p "$CB/.autodev"
+jq '.client_name="CfgB"' "$PLUGIN/reference/deployment.example.json" > "$CB/.autodev/deployment.json"
+echo '{"repo":{"local_path":"/repo-local/path"}}' > "$CB/.autodev/deployment.local.json"
+check "repo-local file wins, not legacy" node "$PROBE" "$CFGLIB" "$CB" "/repo-local/path" false
+
+CC=$(mktemp -d); mkdir -p "$CC/.autodev"
+jq '.client_name="CfgC"' "$PLUGIN/reference/deployment.example.json" > "$CC/.autodev/deployment.json"
+FAKEHOME=$(mktemp -d); mkdir -p "$FAKEHOME/.config/autodev/CfgC"
+echo '{"repo":{"local_path":"/global/path"}}' > "$FAKEHOME/.config/autodev/CfgC/deployment.local.json"
+check "global file used when no repo-local file" bash -c "HOME='$FAKEHOME' node '$PROBE' '$CFGLIB' '$CC' /global/path false"
+rm -rf "$FAKEHOME"
+
+CD=$(mktemp -d); mkdir -p "$CD/.autodev"
+jq '.client_name="CfgD"' "$PLUGIN/reference/deployment.example.json" > "$CD/.autodev/deployment.json"
+echo '{"repo":{"local_path":"/repo-local/wins"}}' > "$CD/.autodev/deployment.local.json"
+FAKEHOME2=$(mktemp -d); mkdir -p "$FAKEHOME2/.config/autodev/CfgD"
+echo '{"repo":{"local_path":"/should-not-be-used"}}' > "$FAKEHOME2/.config/autodev/CfgD/deployment.local.json"
+check "repo-local wins over global when both present" bash -c "HOME='$FAKEHOME2' node '$PROBE' '$CFGLIB' '$CD' /repo-local/wins false"
+rm -rf "$FAKEHOME2"
+
+CE=$(mktemp -d); mkdir -p "$CE/.autodev"
+jq '.client_name="CfgE"' "$PLUGIN/reference/deployment.example.json" > "$CE/.autodev/deployment.json"
+echo '{"repo":{"local_path":"/repo-local/ignored"}}' > "$CE/.autodev/deployment.local.json"
+FORCED_DIR=$(mktemp -d); FORCED="$FORCED_DIR/forced.json"
+echo '{"repo":{"local_path":"/forced/path"}}' > "$FORCED"
+check "AUTODEV_LOCAL_CONFIG override wins over repo-local" bash -c "AUTODEV_LOCAL_CONFIG='$FORCED' node '$PROBE' '$CFGLIB' '$CE' /forced/path false"
+rm -rf "$FORCED_DIR"
+
+CF=$(mktemp -d); mkdir -p "$CF/.autodev"
+jq '.client_name="CfgF" | .tracker.instance_label="autodev:cfgf"' "$PLUGIN/reference/deployment.example.json" > "$CF/.autodev/deployment.json"
+echo '{"tracker":{"instance_label":"autodev:cfgf-machine2"}}' > "$CF/.autodev/deployment.local.json"
+check "tracker.instance_label local override wins" node "$PROBE" "$CFGLIB" "$CF" "" false "autodev:cfgf-machine2"
+
+rm -rf "$CA" "$CB" "$CC" "$CD" "$CE" "$CF"
+
 echo
 if [[ $FAIL -eq 0 ]]; then echo "smoke: PASS"; else echo "smoke: FAIL"; fi
 exit $FAIL
