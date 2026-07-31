@@ -248,6 +248,12 @@ When all the epic's stories are merged into the feature branch and it's green:
 - **After the human merges to `repo.default_branch`:** `reference/merge-verify.md` §3 —
   post-deploy smoke on the real environment → report → **human final prod sign-off**.
 - Merge style: story→feature `merge_policy.story_to_feature`; feature→main `merge_policy.feature_to_main`.
+- **Version bump rides the PR (plugin repos):** if the repo ships a Claude Code
+  plugin manifest (`.claude-plugin/plugin.json`), bump its `version` as the LAST
+  commit before delivering the feature (minor for features, patch for fixes) — a
+  merged change that doesn't bump never reaches plugin users via auto-update. Two
+  open features both bumping is a trivial conflict; the later one re-bumps on rebase.
+  🗒️ `🔢 version <old> → <new>`.
 - 📊 **Feature stats (B8 — if `reporting.feature_stats`):** name · started→shipped ·
   elapsed · #epics/#stories · `git diff --shortstat` lines · dev↔QA rounds · QA
   verdicts. Write both a human summary **comment on the feature** and one JSON line to
