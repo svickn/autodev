@@ -13,8 +13,12 @@ and prints the fix for anything it flags.
 ## Teammates
 
 Anyone who pulls a configured repo just installs the plugin (the README's install
-step) — the committed `.autodev/deployment.json` does the rest. For build updates on
-your phone, run `/remote-control` in Claude Code and pair the Claude mobile app.
+step) — the committed `.autodev/deployment.json` does the rest. One thing is
+per-machine and never committed: `.autodev/deployment.local.json` (repo path,
+runner paths). Run `/autodev:init` once (safe to re-run — it won't touch anything
+already configured) and it writes yours; `doctor` flags it when it's missing. For
+build updates on your phone, run `/remote-control` in Claude Code and pair the
+Claude mobile app.
 
 ## Optional enhancements — each has a built-in fallback
 

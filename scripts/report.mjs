@@ -15,22 +15,13 @@ import { readFileSync, appendFileSync, mkdirSync, statSync, writeFileSync, readd
 import { homedir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { execSync } from 'node:child_process';
+import { loadConfig } from './lib/config.mjs';
 
 const API = 'https://api.linear.app/graphql';
 const force = process.argv.includes('--force');
 
-function findConfig() {
-  if (process.env.AUTODEV_CONFIG) return process.env.AUTODEV_CONFIG;
-  let dir = process.cwd();
-  for (let i = 0; i < 12; i++) {
-    const p = join(dir, '.autodev', 'deployment.json');
-    try { readFileSync(p); return p; } catch {}
-    const up = dirname(dir); if (up === dir) break; dir = up;
-  }
-  console.error('report.mjs: no .autodev/deployment.json'); process.exit(1);
-}
-const CONFIG_PATH = findConfig();
-const cfg = JSON.parse(readFileSync(CONFIG_PATH, 'utf8'));
+const { cfg, configPath: CONFIG_PATH } = loadConfig();
+if (!cfg) { console.error('report.mjs: no .autodev/deployment.json'); process.exit(1); }
 const rep = cfg.reporting || {};
 
 // cadence → seconds
@@ -52,7 +43,7 @@ if (!force && last && now - last < win) process.exit(0); // not due yet
 
 function loadToken() {
   if (process.env.LINEAR_API_TOKEN) return process.env.LINEAR_API_TOKEN.trim();
-  const f = join(homedir(), '.config', 'autodev', `${cfg.client_name || 'client'}.linear.token`);
+  const f = cfg.tracker?.linear?.api_token_file || join(homedir(), '.config', 'autodev', `${cfg.client_name || 'client'}.linear.token`);
   try { return readFileSync(f, 'utf8').trim(); } catch { return null; }
 }
 const token = loadToken();
