@@ -23,22 +23,12 @@
 import { readFileSync, writeFileSync, renameSync, readdirSync, existsSync, mkdirSync, appendFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { loadConfig } from './lib/config.mjs';
 
 function die(msg) { console.error(`tracker.mjs: ${msg}`); process.exit(1); }
 
-function findConfig() {
-  if (process.env.AUTODEV_CONFIG && existsSync(process.env.AUTODEV_CONFIG)) return process.env.AUTODEV_CONFIG;
-  let d = process.cwd();
-  while (true) {
-    const p = join(d, '.autodev', 'deployment.json');
-    if (existsSync(p)) return p;
-    const up = dirname(d);
-    if (up === d) die('no .autodev/deployment.json found (set $AUTODEV_CONFIG or run inside the repo)');
-    d = up;
-  }
-}
-const CONFIG_PATH = findConfig();
-const cfg = JSON.parse(readFileSync(CONFIG_PATH, 'utf8'));
+const { cfg, configPath: CONFIG_PATH } = loadConfig();
+if (!cfg) die('no .autodev/deployment.json found (set $AUTODEV_CONFIG or run inside the repo)');
 const ROOT = dirname(dirname(CONFIG_PATH));
 const BOARD = join(ROOT, '.autodev', 'board');
 const KIND = cfg.tracker?.kind || 'linear';

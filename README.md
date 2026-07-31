@@ -69,9 +69,11 @@ meaningful quota use. You control the burn by how often you run the loop.
   `personas.auto_install: false` turns it off.
 - **QA never touches production** — hermetic overrides on every run; the preflight
   fails when prod endpoints are present and the overrides are off.
-- **Tiny footprint:** `.autodev/deployment.json` (commit it), runtime state under
-  `.autodev/`, and a small identity pointer at `.claude/CLAUDE.md` that never
-  overwrites a team-authored file. Never `.claude/settings.json`, never git config.
+- **Tiny footprint:** `.autodev/deployment.json` (commit it) plus
+  `.autodev/deployment.local.json` (never committed — per-machine paths only),
+  runtime state under `.autodev/`, and a small identity pointer at
+  `.claude/CLAUDE.md` that never overwrites a team-authored file. Never
+  `.claude/settings.json`, never git config.
 
 ## How it works
 

@@ -32,39 +32,26 @@
 //
 // Exit 0 on success (prints the useful id); non-zero with a clear error otherwise.
 
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { join, dirname } from 'node:path';
+import { join } from 'node:path';
+import { loadConfig as loadSharedConfig } from './lib/config.mjs';
 
 const API = 'https://api.app.shortcut.com/api/v3';
 
 function die(msg) { console.error(`shortcut.mjs: ${msg}`); process.exit(1); }
 
-function findConfig() {
-  // guard like tracker.mjs does — a mangled AUTODEV_CONFIG must fall back, not die
-  if (process.env.AUTODEV_CONFIG && existsSync(process.env.AUTODEV_CONFIG)) return process.env.AUTODEV_CONFIG;
-  let dir = process.cwd();
-  for (let i = 0; i < 12; i++) {
-    const p = join(dir, '.autodev', 'deployment.json');
-    try { readFileSync(p); return p; } catch { /* keep walking */ }
-    const parent = dirname(dir);
-    if (parent === dir) break;
-    dir = parent;
-  }
-  die('could not find .autodev/deployment.json (set $AUTODEV_CONFIG)');
-}
-
 function loadConfig() {
-  const path = findConfig();
-  try { return JSON.parse(readFileSync(path, 'utf8')); }
-  catch (e) { die(`bad config at ${path}: ${e.message}`); }
+  const { cfg } = loadSharedConfig();
+  if (!cfg) die('could not find .autodev/deployment.json (set $AUTODEV_CONFIG)');
+  return cfg;
 }
 
 function loadToken(cfg) {
   const envName = cfg.tracker?.shortcut?.api_token_env || 'SHORTCUT_API_TOKEN';
   if (process.env[envName]) return process.env[envName].trim();
   const client = cfg.client_name || 'client';
-  const file = join(homedir(), '.config', 'autodev', `${client}.shortcut.token`);
+  const file = cfg.tracker?.shortcut?.api_token_file || join(homedir(), '.config', 'autodev', `${client}.shortcut.token`);
   try { return readFileSync(file, 'utf8').trim(); }
   catch { die(`no token: set $${envName} or create ${file}`); }
 }
