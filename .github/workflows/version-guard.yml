@@ -1,0 +1,30 @@
+name: version-guard
+# A PR that changes what the plugin ships must also bump the plugin version —
+# otherwise marketplace auto-update never fires and users silently stay behind
+# (this happened for two weeks of features; see board ticket AD-19).
+on:
+  pull_request:
+    branches: [main]
+jobs:
+  version-bumped:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - name: fail if engine changed but plugin.json version did not
+        run: |
+          BASE="origin/${{ github.base_ref }}"
+          git fetch -q origin "${{ github.base_ref }}"
+          CHANGED=$(git diff --name-only "$BASE"...HEAD)
+          echo "$CHANGED"
+          if echo "$CHANGED" | grep -qE '^(commands/|reference/|scripts/|hooks/|install\.sh|\.claude-plugin/)'; then
+            OLD=$(git show "$BASE":.claude-plugin/plugin.json | jq -r .version)
+            NEW=$(jq -r .version .claude-plugin/plugin.json)
+            if [ "$OLD" = "$NEW" ]; then
+              echo "::error::Engine files changed but plugin.json version is still $OLD — bump it in this PR so auto-update ships your change."
+              exit 1
+            fi
+            echo "version bump ok: $OLD -> $NEW"
+          else
+            echo "no engine files changed — bump not required"
+          fi
